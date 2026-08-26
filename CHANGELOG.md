@@ -4,6 +4,12 @@ All notable changes to iRacing Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [1.2.3] - 2026-08-26
+
+### Added
+
+- Automatic detection and lifecycle support for Edge Overlays.
+
 ## [1.2.2] - 2026-08-20
 
 ### Added

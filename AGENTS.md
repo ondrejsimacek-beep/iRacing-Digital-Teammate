@@ -18,7 +18,7 @@
 
 ## Supported local priorities
 
-- Garage61 and irDashies are important integrations.
+- Garage61, irDashies, and Edge Overlays are important integrations.
 - CONSPIT Launcher (`ConspitLink2.0.exe`) and SimConnect Manager (`SimConnectManager.exe`) are user-specific priorities and should remain automatically detected.
 - Keep per-app USE/HIDE/BROWSE controls and allow hidden cards to be restored.
 
