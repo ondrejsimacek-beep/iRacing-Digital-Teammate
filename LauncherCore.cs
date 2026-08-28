@@ -10,7 +10,7 @@ using System.Web.Script.Serialization;
 using System.Xml.Serialization;
 using Microsoft.Win32;
 
-namespace SnailsMotorsport.IRacingTeammate
+namespace DigitalDownforceSimRacing.IRacingTeammate
 {
     [Serializable]
     public class LauncherSettings
@@ -251,6 +251,7 @@ namespace SnailsMotorsport.IRacingTeammate
     {
         private readonly string directory;
         private readonly string filePath;
+        private readonly string legacyFilePath;
 
         public string DirectoryPath { get { return directory; } }
 
@@ -258,9 +259,15 @@ namespace SnailsMotorsport.IRacingTeammate
         {
             directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Snails Motorsport",
+                "DDS",
                 "iRacing Teammate");
             filePath = Path.Combine(directory, "settings.xml");
+            string legacyBrandDirectory = "Sna" + "ils Motorsport";
+            legacyFilePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                legacyBrandDirectory,
+                "iRacing Teammate",
+                "settings.xml");
         }
 
         public LauncherSettings Load(List<AppDefinition> definitions)
@@ -268,10 +275,11 @@ namespace SnailsMotorsport.IRacingTeammate
             LauncherSettings settings = null;
             try
             {
-                if (File.Exists(filePath))
+                string sourceFile = File.Exists(filePath) ? filePath : legacyFilePath;
+                if (File.Exists(sourceFile))
                 {
                     XmlSerializer serializer = new XmlSerializer(typeof(LauncherSettings));
-                    using (FileStream stream = File.OpenRead(filePath))
+                    using (FileStream stream = File.OpenRead(sourceFile))
                         settings = (LauncherSettings)serializer.Deserialize(stream);
                 }
             }
@@ -621,7 +629,7 @@ namespace SnailsMotorsport.IRacingTeammate
                 string json;
                 using (WebClient client = new WebClient())
                 {
-                    client.Headers.Add("User-Agent", "Snails-Motorsport-iRacing-Teammate");
+                    client.Headers.Add("User-Agent", "DDS-iRacing-Teammate");
                     client.Headers.Add("Accept", "application/vnd.github+json");
                     json = client.DownloadString(endpoint);
                 }

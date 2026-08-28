@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace SnailsMotorsport.IRacingTeammate
+namespace DigitalDownforceSimRacing.IRacingTeammate
 {
     internal static class Program
     {
@@ -14,11 +14,11 @@ namespace SnailsMotorsport.IRacingTeammate
         {
             try { SetProcessDPIAware(); } catch { }
             bool created;
-            using (Mutex mutex = new Mutex(true, "SnailsMotorsport.IRacingTeammate", out created))
+            using (Mutex mutex = new Mutex(true, "DigitalDownforceSimRacing.IRacingTeammate", out created))
             {
                 if (!created)
                 {
-                    MessageBox.Show("iRacing Teammate is already running.", "Snails Motorsport",
+                    MessageBox.Show("iRacing Teammate is already running.", "Digital Downforce Sim Racing",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
