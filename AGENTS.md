@@ -28,10 +28,10 @@
 - This is a dependency-free Windows Forms application targeting the installed .NET Framework compiler; there is intentionally no NuGet dependency or project file.
 - `version.txt` is the single release-version source. `build.ps1` generates assembly version metadata and embeds the GitHub update repository; `build-installer.ps1` creates the per-user Inno Setup installer.
 - Build locally with:
-  `powershell -ExecutionPolicy Bypass -File .\build.ps1 -UpdateRepository ondrejsimacek-beep/iRacing-Teammate`
+  `powershell -ExecutionPolicy Bypass -File .\build.ps1 -UpdateRepository ondrejsimacek-beep/iRacing-Digital-Teammate`
 - The installer must create a Start menu entry, register the app in Windows Installed apps, and provide an uninstaller without requiring administrator rights.
 - Generated files belong in `dist/` or `obj/` and must remain ignored by Git.
-- Public repository: `https://github.com/ondrejsimacek-beep/iRacing-Teammate`.
+- Public repository: `https://github.com/ondrejsimacek-beep/iRacing-Digital-Teammate`.
 
 ## Verification and releases
 

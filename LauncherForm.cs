@@ -476,10 +476,10 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                         SetActivity("A new version " + result.LatestVersion + " is available.", Livery.Success);
                         DialogResult download = MessageBox.Show(this,
                             "A new iRacing Digital Teammate version " + result.LatestVersion + " is available.\n\n" +
-                            "Open the GitHub release page?",
+                            "Download and verify the update in the background?",
                             "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-                        if (download == DialogResult.Yes && !String.IsNullOrWhiteSpace(result.ReleaseUrl))
-                            System.Diagnostics.Process.Start(result.ReleaseUrl);
+                        if (download == DialogResult.Yes)
+                            DownloadUpdate(result);
                     }
                     else
                     {
@@ -488,6 +488,55 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                         MessageBox.Show(this,
                             "You are running the latest version (" + current.ToString(3) + ").",
                             "No updates available", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                });
+            });
+            worker.IsBackground = true;
+            worker.Start();
+        }
+
+        private void DownloadUpdate(UpdateCheckResult update)
+        {
+            updateButton.Enabled = false;
+            updateButton.Text = "DOWNLOADING…";
+            SetActivity("Downloading and verifying " + update.LatestVersion + "…", Livery.GoldBright);
+
+            Thread worker = new Thread(delegate()
+            {
+                UpdateDownloadResult download = UpdateInstaller.DownloadAndVerify(update);
+                Ui(delegate
+                {
+                    updateButton.Enabled = true;
+                    updateButton.Text = "CHECK FOR UPDATES";
+
+                    if (!download.Succeeded)
+                    {
+                        SetActivity("Update download or verification failed.", Livery.Error);
+                        MessageBox.Show(this,
+                            "The update could not be downloaded safely:\n\n" + download.Error +
+                            "\n\nNo changes were made to the installed application.",
+                            "Update failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    SetActivity("Update " + update.LatestVersion + " is downloaded and verified.", Livery.Success);
+                    DialogResult install = MessageBox.Show(this,
+                        "Update " + update.LatestVersion + " was downloaded and verified.\n\n" +
+                        "Install it now? Teammate will close and restart minimized beside the clock.",
+                        "Update ready", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                    if (install != DialogResult.Yes) return;
+
+                    try
+                    {
+                        SetActivity("Installing update…", Livery.GoldBright);
+                        UpdateInstaller.Launch(download.InstallerPath);
+                        Application.Exit();
+                    }
+                    catch (Exception ex)
+                    {
+                        SetActivity("Update installation could not start.", Livery.Error);
+                        MessageBox.Show(this, "The verified installer could not be started:\n\n" + ex.Message,
+                            "Update failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 });
             });

@@ -4,6 +4,18 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.2.0] - 2026-08-28
+
+### Added
+
+- Added background update downloads from GitHub Releases.
+- Added SHA-256 verification before an update installer can run.
+- Added silent in-place installation followed by an automatic minimized restart in the notification area.
+
+### Changed
+
+- Updated repository references for the iRacing Digital Teammate product name.
+
 ## [2.1.1] - 2026-08-28
 
 ### Changed
