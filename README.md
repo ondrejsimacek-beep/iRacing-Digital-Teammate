@@ -31,7 +31,8 @@ came from this repository's Releases page before running it.
   close button keep Teammate available beside the clock without occupying the taskbar.
 - **Auto Mode** starts selected companion apps when an iRacing simulator session
   begins and stops only Teammate-launched apps after the session ends.
-- GitHub Releases update check with confirmation before opening a download page.
+- Background updates from GitHub Releases with SHA-256 verification, confirmation,
+  in-place installation, and automatic restart in the notification area.
 - Persistent settings under `%APPDATA%\DDS\iRacing Digital Teammate`, with automatic
   migration from earlier branded releases.
 
@@ -80,7 +81,7 @@ Build locally:
 To embed a GitHub update source in a local build:
 
 ```powershell
-.\build.ps1 -UpdateRepository "owner/iRacing-Teammate"
+.\build.ps1 -UpdateRepository "owner/iRacing-Digital-Teammate"
 ```
 
 The executable is written to `dist\iRacing Digital Teammate.exe`. Install Inno

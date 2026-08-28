@@ -5,7 +5,7 @@
 #define MyAppName "iRacing Digital Teammate"
 #define MyAppPublisher "Digital Downforce Sim Racing"
 #define MyAppExeName "iRacing Digital Teammate.exe"
-#define MyAppUrl "https://github.com/ondrejsimacek-beep/iRacing-Teammate"
+#define MyAppUrl "https://github.com/ondrejsimacek-beep/iRacing-Digital-Teammate"
 
 [Setup]
 AppId={{7C194F19-7362-4DB8-8AB1-7CF09BC78D50}
@@ -52,3 +52,10 @@ Type: files; Name: "{userstartup}\iRacing Teammate.lnk"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--minimized"; Flags: nowait; Check: IsUpdateMode
+
+[Code]
+function IsUpdateMode: Boolean;
+begin
+  Result := ExpandConstant('{param:DDSUPDATE|0}') = '1';
+end;

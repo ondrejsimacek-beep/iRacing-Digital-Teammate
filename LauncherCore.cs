@@ -1,10 +1,12 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Web.Script.Serialization;
 using System.Xml.Serialization;
@@ -609,7 +611,20 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public bool UpdateAvailable;
         public string LatestVersion;
         public string ReleaseUrl;
+        public string InstallerUrl;
+        public string ChecksumUrl;
         public string Error;
+    }
+
+    public class UpdateDownloadResult
+    {
+        public string InstallerPath;
+        public string Error;
+
+        public bool Succeeded
+        {
+            get { return !String.IsNullOrWhiteSpace(InstallerPath) && String.IsNullOrWhiteSpace(Error); }
+        }
     }
 
     public static class UpdateChecker
@@ -654,6 +669,25 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 result.ReleaseUrl = release.ContainsKey("html_url") ? Convert.ToString(release["html_url"]) :
                     "https://github.com/" + repository + "/releases/latest";
 
+                object assetsValue;
+                IEnumerable assets = release.TryGetValue("assets", out assetsValue) ? assetsValue as IEnumerable : null;
+                if (assets != null)
+                {
+                    foreach (object assetValue in assets)
+                    {
+                        Dictionary<string, object> asset = assetValue as Dictionary<string, object>;
+                        if (asset == null) continue;
+                        string name = asset.ContainsKey("name") ? Convert.ToString(asset["name"]) : "";
+                        string url = asset.ContainsKey("browser_download_url") ? Convert.ToString(asset["browser_download_url"]) : "";
+                        if (name.StartsWith("iRacing-Digital-Teammate-Setup-", StringComparison.OrdinalIgnoreCase) &&
+                            name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                            result.InstallerUrl = url;
+                        else if (name.StartsWith("iRacing-Digital-Teammate-Setup-", StringComparison.OrdinalIgnoreCase) &&
+                            name.EndsWith(".exe.sha256", StringComparison.OrdinalIgnoreCase))
+                            result.ChecksumUrl = url;
+                    }
+                }
+
                 string normalized = (result.LatestVersion ?? "").Trim();
                 if (normalized.StartsWith("v", StringComparison.OrdinalIgnoreCase)) normalized = normalized.Substring(1);
                 Version latest;
@@ -665,6 +699,80 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 result.Error = ex.Message;
             }
             return result;
+        }
+    }
+
+    public static class UpdateInstaller
+    {
+        public static UpdateDownloadResult DownloadAndVerify(UpdateCheckResult update)
+        {
+            UpdateDownloadResult result = new UpdateDownloadResult();
+            try
+            {
+                Uri installerUri;
+                Uri checksumUri;
+                if (update == null || !Uri.TryCreate(update.InstallerUrl, UriKind.Absolute, out installerUri) ||
+                    !Uri.TryCreate(update.ChecksumUrl, UriKind.Absolute, out checksumUri) ||
+                    installerUri.Scheme != Uri.UriSchemeHttps || checksumUri.Scheme != Uri.UriSchemeHttps ||
+                    !installerUri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
+                    !checksumUri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("This release does not contain a trusted installer and checksum pair.");
+
+                string version = SafePathPart(update.LatestVersion);
+                string directory = Path.Combine(Path.GetTempPath(), "iRacing Digital Teammate Update", version);
+                Directory.CreateDirectory(directory);
+                string installerPath = Path.Combine(directory, "iRacing-Digital-Teammate-Update.exe");
+                string checksumPath = installerPath + ".sha256";
+
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers.Add("User-Agent", "DDS-iRacing-Digital-Teammate");
+                    client.DownloadFile(installerUri, installerPath);
+                    client.DownloadFile(checksumUri, checksumPath);
+                }
+
+                string checksumText = File.ReadAllText(checksumPath).Trim();
+                string expected = checksumText.Split(new char[] { ' ', '\t', '\r', '\n' },
+                    StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                string actual;
+                using (SHA256 sha = SHA256.Create())
+                using (FileStream stream = File.OpenRead(installerPath))
+                    actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+
+                if (String.IsNullOrWhiteSpace(expected) || expected.Length != 64 ||
+                    !actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Delete(installerPath); } catch { }
+                    throw new InvalidDataException("The downloaded update failed SHA-256 verification.");
+                }
+
+                result.InstallerPath = installerPath;
+            }
+            catch (Exception ex)
+            {
+                result.Error = ex.Message;
+            }
+            return result;
+        }
+
+        public static void Launch(string installerPath)
+        {
+            if (String.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
+                throw new FileNotFoundException("The verified update installer could not be found.", installerPath);
+
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.FileName = installerPath;
+            start.Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /SP- /DDSUPDATE=1";
+            start.UseShellExecute = false;
+            Process.Start(start);
+        }
+
+        private static string SafePathPart(string value)
+        {
+            string safe = String.IsNullOrWhiteSpace(value) ? "latest" : value.Trim();
+            foreach (char invalid in Path.GetInvalidFileNameChars()) safe = safe.Replace(invalid, '_');
+            return safe;
         }
     }
 }
