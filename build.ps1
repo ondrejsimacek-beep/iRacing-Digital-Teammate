@@ -48,7 +48,7 @@ $bitmap = New-Object System.Drawing.Bitmap 64, 64
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$graphics.Clear([System.Drawing.Color]::FromArgb(9, 0, 25))
+$graphics.Clear([System.Drawing.Color]::FromArgb(13, 15, 23))
 $logoImage = [System.Drawing.Image]::FromFile($logoPath)
 $destination = New-Object System.Drawing.Rectangle 4, 8, 56, 44
 $source = New-Object System.Drawing.Rectangle 55, 300, 340, 265
@@ -69,7 +69,7 @@ $sources = @(
     (Join-Path $projectDir 'LauncherCore.cs'),
     (Join-Path $projectDir 'LauncherForm.cs')
 )
-$outputExe = Join-Path $outputDir 'iRacing Teammate.exe'
+$outputExe = Join-Path $outputDir 'iRacing Digital Teammate.exe'
 $outputArgument = '/out:' + $outputExe
 $logoResourceArgument = '/resource:' + $logoPath + ',DdsLogo'
 $bannerResourceArgument = '/resource:' + $bannerPath + ',DdsBanner'

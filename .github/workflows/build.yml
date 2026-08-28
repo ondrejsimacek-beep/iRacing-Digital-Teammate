@@ -21,11 +21,20 @@ jobs:
         shell: powershell
         run: .\build.ps1 -UpdateRepository "${{ github.repository }}"
 
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: powershell
+        run: .\build-installer.ps1
+
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
-          name: iRacing-Teammate-${{ github.sha }}
+          name: iRacing-Digital-Teammate-${{ github.sha }}
           path: |
-            dist/iRacing Teammate.exe
+            dist/iRacing Digital Teammate.exe
+            dist/iRacing-Digital-Teammate-Setup-*.exe
             dist/README.md
           if-no-files-found: error
