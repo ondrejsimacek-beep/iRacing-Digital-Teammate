@@ -44,6 +44,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private LiveryButton startupButton;
         private LiveryButton updateButton;
         private LiveryButton autoModeButton;
+        private Label sidebarSessionState;
+        private Label sidebarStackState;
+        private Label sidebarAutoState;
         private readonly System.Windows.Forms.Timer refreshTimer;
         private volatile bool operationRunning;
         private volatile bool autoTransitionRunning;
@@ -253,40 +256,52 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             goldRule.Size = new Size(42, 3);
             sidebar.Controls.Add(goldRule);
 
-            AddNav(sidebar, "01", "RACE STACK", 145, true);
-            AddNav(sidebar, "02", "APPLICATIONS", 194, false);
-            AddNav(sidebar, "03", "LAUNCH ORDER", 243, false);
+            Label statusTitle = new Label();
+            statusTitle.Text = "LIVE STATUS";
+            statusTitle.ForeColor = Livery.Muted;
+            statusTitle.Font = new Font("Segoe UI Semibold", 7.5F, FontStyle.Bold);
+            statusTitle.Location = new Point(23, 145);
+            statusTitle.AutoSize = true;
+            sidebar.Controls.Add(statusTitle);
 
-            Label label = new Label();
-            label.Text = "PIT WALL";
-            label.ForeColor = Livery.Muted;
-            label.Font = new Font("Segoe UI Semibold", 7.5F, FontStyle.Bold);
-            label.Location = new Point(23, 318);
-            label.AutoSize = true;
-            sidebar.Controls.Add(label);
+            Panel status = new Panel();
+            status.BackColor = Livery.Carbon;
+            status.Location = new Point(22, 172);
+            status.Size = new Size(192, 218);
+            status.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            sidebar.Controls.Add(status);
 
-            Panel info = new Panel();
-            info.BackColor = Livery.Carbon;
-            info.Location = new Point(22, 344);
-            info.Size = new Size(192, 116);
-            info.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
-            sidebar.Controls.Add(info);
+            Panel statusRail = new Panel();
+            statusRail.BackColor = Livery.Gold;
+            statusRail.Location = new Point(0, 0);
+            statusRail.Size = new Size(2, 218);
+            status.Controls.Add(statusRail);
 
-            Label infoTitle = new Label();
-            infoTitle.Text = "SESSION CONTROL";
-            infoTitle.ForeColor = Livery.Silver;
-            infoTitle.Font = new Font("Segoe UI Semibold", 8F, FontStyle.Bold);
-            infoTitle.Location = new Point(14, 14);
-            infoTitle.AutoSize = true;
-            info.Controls.Add(infoTitle);
+            Label sessionTitle = new Label();
+            sessionTitle.Text = "●  IRACING SESSION";
+            sessionTitle.ForeColor = Livery.GoldBright;
+            sessionTitle.Font = new Font("Segoe UI Semibold", 8F, FontStyle.Bold);
+            sessionTitle.Location = new Point(14, 14);
+            sessionTitle.AutoSize = true;
+            status.Controls.Add(sessionTitle);
 
-            Label infoText = new Label();
-            infoText.Text = "Auto Mode follows each iRacing session. Only processes launched here are stopped.";
-            infoText.ForeColor = Livery.Muted;
-            infoText.Font = new Font("Segoe UI", 8F);
-            infoText.Location = new Point(14, 39);
-            infoText.Size = new Size(162, 62);
-            info.Controls.Add(infoText);
+            sidebarSessionState = AddStatusRow(status, "SESSION", 52);
+            sidebarStackState = AddStatusRow(status, "RACE STACK", 84);
+            sidebarAutoState = AddStatusRow(status, "AUTO MODE", 116);
+
+            Panel separator = new Panel();
+            separator.BackColor = Livery.Border;
+            separator.Location = new Point(14, 151);
+            separator.Size = new Size(164, 1);
+            status.Controls.Add(separator);
+
+            Label statusHint = new Label();
+            statusHint.Text = "Only software started for this session is stopped automatically.";
+            statusHint.ForeColor = Livery.Muted;
+            statusHint.Font = new Font("Segoe UI", 7.6F);
+            statusHint.Location = new Point(14, 164);
+            statusHint.Size = new Size(164, 42);
+            status.Controls.Add(statusHint);
 
             autoModeButton = new LiveryButton("AUTO MODE", Livery.SurfaceLight, Livery.Silver, 192);
             autoModeButton.Location = new Point(22, 498);
@@ -340,37 +355,25 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             return sidebar;
         }
 
-        private static void AddNav(Control parent, string number, string text, int top, bool selected)
+        private static Label AddStatusRow(Control parent, string text, int top)
         {
-            Panel row = new Panel();
-            row.Location = new Point(0, top);
-            row.Size = new Size(236, 40);
-            row.BackColor = selected ? Color.FromArgb(26, 28, 31) : Livery.Sidebar;
-            parent.Controls.Add(row);
+            Label name = new Label();
+            name.Text = text;
+            name.ForeColor = Livery.Muted;
+            name.Font = new Font("Segoe UI Semibold", 7.5F, FontStyle.Bold);
+            name.Location = new Point(14, top);
+            name.AutoSize = true;
+            parent.Controls.Add(name);
 
-            if (selected)
-            {
-                Panel rail = new Panel();
-                rail.BackColor = Livery.Gold;
-                rail.Location = new Point(0, 0);
-                rail.Size = new Size(3, 40);
-                row.Controls.Add(rail);
-            }
-            Label numberLabel = new Label();
-            numberLabel.Text = number;
-            numberLabel.ForeColor = selected ? Livery.Gold : Color.FromArgb(77, 83, 91);
-            numberLabel.Font = new Font("Segoe UI Semibold", 8F, FontStyle.Bold);
-            numberLabel.Location = new Point(22, 12);
-            numberLabel.AutoSize = true;
-            row.Controls.Add(numberLabel);
-
-            Label textLabel = new Label();
-            textLabel.Text = text;
-            textLabel.ForeColor = selected ? Livery.Text : Livery.Muted;
-            textLabel.Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold);
-            textLabel.Location = new Point(57, 11);
-            textLabel.AutoSize = true;
-            row.Controls.Add(textLabel);
+            Label value = new Label();
+            value.Text = "—";
+            value.ForeColor = Livery.Silver;
+            value.Font = new Font("Segoe UI Semibold", 7.5F, FontStyle.Bold);
+            value.Location = new Point(94, top);
+            value.Size = new Size(84, 18);
+            value.TextAlign = ContentAlignment.TopRight;
+            parent.Controls.Add(value);
+            return value;
         }
 
         private AppSetting FindSetting(string key)
@@ -762,6 +765,22 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             int selected = settings.Apps.Count(delegate(AppSetting item) { return item.Enabled; });
             int configured = settings.Apps.Count(delegate(AppSetting item) { return item.Enabled && File.Exists(item.Path); });
             stackStatusLabel.Text = "RACE STACK  •  " + selected + " SELECTED  •  " + configured + " READY";
+            if (sidebarStackState != null)
+            {
+                sidebarStackState.Text = configured + " / " + selected + " READY";
+                sidebarStackState.ForeColor = configured == selected && selected > 0 ? Livery.Success : Livery.Silver;
+            }
+            if (sidebarAutoState != null)
+            {
+                sidebarAutoState.Text = settings.AutoModeEnabled ? "ON" : "OFF";
+                sidebarAutoState.ForeColor = settings.AutoModeEnabled ? Livery.GoldBright : Livery.Muted;
+            }
+            if (sidebarSessionState != null)
+            {
+                bool sessionRunning = ProcessController.IsIRacingSessionRunning();
+                sidebarSessionState.Text = sessionRunning ? "ACTIVE" : "WAITING";
+                sidebarSessionState.ForeColor = sessionRunning ? Livery.Success : Livery.Muted;
+            }
         }
 
         private void SetButtonsEnabled(bool enabled)
