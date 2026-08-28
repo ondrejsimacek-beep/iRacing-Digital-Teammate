@@ -8,24 +8,24 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace SnailsMotorsport.IRacingTeammate
+namespace DigitalDownforceSimRacing.IRacingTeammate
 {
     public static class Livery
     {
-        public static readonly Color Background = Color.FromArgb(10, 12, 15);
-        public static readonly Color Sidebar = Color.FromArgb(15, 18, 22);
-        public static readonly Color Surface = Color.FromArgb(22, 25, 30);
-        public static readonly Color SurfaceLight = Color.FromArgb(29, 33, 39);
-        public static readonly Color Carbon = Color.FromArgb(18, 20, 23);
-        public static readonly Color Gold = Color.FromArgb(183, 151, 101);
-        public static readonly Color GoldBright = Color.FromArgb(211, 180, 128);
-        public static readonly Color Silver = Color.FromArgb(199, 205, 210);
-        public static readonly Color Blue = Color.FromArgb(119, 148, 181);
-        public static readonly Color Text = Color.FromArgb(239, 241, 242);
-        public static readonly Color Muted = Color.FromArgb(142, 149, 158);
-        public static readonly Color Border = Color.FromArgb(48, 52, 59);
-        public static readonly Color Success = Color.FromArgb(104, 181, 143);
-        public static readonly Color Error = Color.FromArgb(213, 102, 96);
+        public static readonly Color Background = Color.FromArgb(9, 0, 25);
+        public static readonly Color Sidebar = Color.FromArgb(13, 2, 34);
+        public static readonly Color Surface = Color.FromArgb(22, 8, 47);
+        public static readonly Color SurfaceLight = Color.FromArgb(33, 15, 66);
+        public static readonly Color Carbon = Color.FromArgb(12, 1, 29);
+        public static readonly Color Gold = Color.FromArgb(224, 45, 238);
+        public static readonly Color GoldBright = Color.FromArgb(244, 94, 255);
+        public static readonly Color Silver = Color.FromArgb(218, 231, 255);
+        public static readonly Color Blue = Color.FromArgb(0, 222, 246);
+        public static readonly Color Text = Color.FromArgb(247, 248, 255);
+        public static readonly Color Muted = Color.FromArgb(154, 165, 195);
+        public static readonly Color Border = Color.FromArgb(58, 35, 99);
+        public static readonly Color Success = Color.FromArgb(46, 212, 184);
+        public static readonly Color Error = Color.FromArgb(255, 92, 122);
     }
 
     public class LauncherForm : Form
@@ -65,7 +65,7 @@ namespace SnailsMotorsport.IRacingTeammate
             processes = new ProcessController();
             cards = new Dictionary<string, AppCard>();
 
-            Text = "iRacing Teammate — Snails Motorsport";
+            Text = "iRacing Teammate — Digital Downforce Sim Racing";
             Size = new Size(1280, 820);
             MinimumSize = new Size(1080, 700);
             StartPosition = FormStartPosition.CenterScreen;
@@ -234,17 +234,17 @@ namespace SnailsMotorsport.IRacingTeammate
             sidebar.BackColor = Livery.Sidebar;
             sidebar.Padding = new Padding(22, 26, 22, 22);
 
-            MascotLogo logo = new MascotLogo();
-            logo.Location = new Point(22, 26);
-            logo.Size = new Size(58, 58);
+            BrandLogo logo = new BrandLogo();
+            logo.Location = new Point(20, 26);
+            logo.Size = new Size(70, 58);
             sidebar.Controls.Add(logo);
 
             Label brand = new Label();
-            brand.Text = "SNAILS\nMOTORSPORT";
+            brand.Text = "DIGITAL DOWNFORCE\nSIM RACING";
             brand.ForeColor = Livery.Text;
-            brand.Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold);
-            brand.Location = new Point(90, 31);
-            brand.Size = new Size(125, 52);
+            brand.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+            brand.Location = new Point(94, 34);
+            brand.Size = new Size(132, 45);
             sidebar.Controls.Add(brand);
 
             Panel goldRule = new Panel();
@@ -315,7 +315,7 @@ namespace SnailsMotorsport.IRacingTeammate
 
             Label footer = new Label();
             footer.Text = "iRACING TEAMMATE  •  " + Assembly.GetExecutingAssembly().GetName().Version.ToString(3) +
-                "\nBY SNAILS MOTORSPORT";
+                "\nBY DDS";
             footer.ForeColor = Color.FromArgb(91, 98, 106);
             footer.Font = new Font("Segoe UI Semibold", 7.3F, FontStyle.Bold);
             footer.Location = new Point(22, 735);
@@ -800,7 +800,7 @@ namespace SnailsMotorsport.IRacingTeammate
 
             trayIcon = new NotifyIcon();
             trayIcon.Icon = Icon;
-            trayIcon.Text = "iRacing Teammate — Snails Motorsport";
+            trayIcon.Text = "iRacing Teammate — Digital Downforce Sim Racing";
             trayIcon.ContextMenuStrip = menu;
             trayIcon.Visible = true;
             trayIcon.DoubleClick += delegate { RestoreFromTray(); };
@@ -867,7 +867,7 @@ namespace SnailsMotorsport.IRacingTeammate
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.Clear(Livery.Background);
-                MascotAsset.DrawFitted(g, new Rectangle(1, 5, 30, 22));
+                BrandAsset.DrawIcon(g, new Rectangle(1, 1, 30, 30));
             }
             return Icon.FromHandle(bitmap.GetHicon());
         }
@@ -1067,22 +1067,22 @@ namespace SnailsMotorsport.IRacingTeammate
             int w = Width;
             int h = Height;
 
-            using (Brush subtle = new SolidBrush(Color.FromArgb(26, 29, 34)))
-                for (int x = -h; x < w; x += 24)
+            BrandAsset.DrawBanner(g, new Rectangle(Math.Max(0, w - 470), 0, 470, h));
+
+            using (Brush subtle = new SolidBrush(Color.FromArgb(28, 10, 55)))
+                for (int x = -h; x < Math.Max(600, w - 380); x += 24)
                     g.FillPolygon(subtle, new Point[] { new Point(x, h), new Point(x + 9, h), new Point(x + h, 0), new Point(x + h - 9, 0) });
 
-            using (Brush gold = new SolidBrush(Livery.Gold))
-                g.FillPolygon(gold, new Point[] { new Point(w - 355, h), new Point(w - 175, 0), new Point(w - 62, 0), new Point(w - 242, h) });
-            using (Brush silver = new SolidBrush(Livery.Silver))
-                g.FillPolygon(silver, new Point[] { new Point(w - 262, h), new Point(w - 105, 0), new Point(w - 75, 0), new Point(w - 231, h) });
-            using (Brush blue = new SolidBrush(Livery.Blue))
-                g.FillPolygon(blue, new Point[] { new Point(w - 224, h), new Point(w - 74, 0), new Point(w - 59, 0), new Point(w - 209, h) });
-            using (Brush dark = new SolidBrush(Color.FromArgb(218, Livery.Carbon)))
-                g.FillRectangle(dark, 0, 0, Math.Max(540, w - 330), h);
+            using (Brush dark = new SolidBrush(Color.FromArgb(236, Livery.Carbon)))
+                g.FillRectangle(dark, 0, 0, Math.Max(560, w - 405), h);
+            using (Brush magenta = new SolidBrush(Color.FromArgb(190, Livery.Gold)))
+                g.FillPolygon(magenta, new Point[] { new Point(w - 420, h), new Point(w - 372, 0), new Point(w - 354, 0), new Point(w - 401, h) });
+            using (Brush cyan = new SolidBrush(Color.FromArgb(190, Livery.Blue)))
+                g.FillPolygon(cyan, new Point[] { new Point(w - 395, h), new Point(w - 350, 0), new Point(w - 340, 0), new Point(w - 385, h) });
 
             using (Font kicker = new Font("Segoe UI Semibold", 8F, FontStyle.Bold))
             using (Brush goldText = new SolidBrush(Livery.GoldBright))
-                g.DrawString("SNAILS MOTORSPORT  /  PIT WALL SYSTEM", kicker, goldText, 28, 24);
+                g.DrawString("DIGITAL DOWNFORCE SIM RACING  /  PIT WALL SYSTEM", kicker, goldText, 28, 24);
             using (Font title = new Font("Segoe UI Semibold", 28F, FontStyle.Bold))
             using (Brush text = new SolidBrush(Livery.Text))
                 g.DrawString("iRacing Teammate", title, text, 24, 48);
@@ -1094,56 +1094,74 @@ namespace SnailsMotorsport.IRacingTeammate
             using (Font version = new Font("Segoe UI Semibold", 7.5F, FontStyle.Bold))
             using (Brush silverText = new SolidBrush(Livery.Silver))
                 g.DrawString("TEAMMATE FOR YOUR SOFTWARE", version, silverText, 91, 127);
-
-            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            MascotAsset.DrawFitted(g, new Rectangle(w - 326, 13, 300, h - 25));
         }
     }
 
-    public static class MascotAsset
+    public static class BrandAsset
     {
-        private static Image mascot;
+        private static Image logo;
+        private static Image banner;
 
-        public static Image Image
+        private static Image Load(string resourceName)
         {
-            get
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
             {
-                if (mascot == null)
+                if (stream == null) return null;
+                using (Image source = System.Drawing.Image.FromStream(stream))
                 {
-                    using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("SnailsMascot"))
-                    {
-                        if (stream != null)
-                        {
-                            using (Image source = System.Drawing.Image.FromStream(stream))
-                                mascot = new Bitmap(source);
-                        }
-                    }
+                    return new Bitmap(source);
                 }
-                return mascot;
             }
         }
 
-        public static void DrawFitted(Graphics graphics, Rectangle bounds)
+        private static Image Logo
         {
-            Image image = Image;
+            get { if (logo == null) logo = Load("DdsLogo"); return logo; }
+        }
+
+        private static Image Banner
+        {
+            get { if (banner == null) banner = Load("DdsBanner"); return banner; }
+        }
+
+        public static void DrawLogo(Graphics graphics, Rectangle bounds)
+        {
+            Image image = Logo;
             if (image == null) return;
-            float scale = Math.Min((float)bounds.Width / image.Width, (float)bounds.Height / image.Height);
-            int width = (int)(image.Width * scale);
-            int height = (int)(image.Height * scale);
+            Rectangle source = new Rectangle(30, 285, 740, 300);
+            float scale = Math.Min((float)bounds.Width / source.Width, (float)bounds.Height / source.Height);
+            int width = (int)(source.Width * scale);
+            int height = (int)(source.Height * scale);
             int left = bounds.Left + (bounds.Width - width) / 2;
             int top = bounds.Top + (bounds.Height - height) / 2;
-            graphics.DrawImage(image, new Rectangle(left, top, width, height));
+            graphics.DrawImage(image, new Rectangle(left, top, width, height), source, GraphicsUnit.Pixel);
+        }
+
+        public static void DrawIcon(Graphics graphics, Rectangle bounds)
+        {
+            Image image = Logo;
+            if (image == null) return;
+            Rectangle source = new Rectangle(55, 300, 340, 265);
+            graphics.DrawImage(image, bounds, source, GraphicsUnit.Pixel);
+        }
+
+        public static void DrawBanner(Graphics graphics, Rectangle bounds)
+        {
+            Image image = Banner;
+            if (image == null) return;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.DrawImage(image, bounds);
         }
     }
 
-    public class MascotLogo : Control
+    public class BrandLogo : Control
     {
-        public MascotLogo() { DoubleBuffered = true; BackColor = Livery.Sidebar; }
+        public BrandLogo() { DoubleBuffered = true; BackColor = Livery.Sidebar; }
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            MascotAsset.DrawFitted(e.Graphics, new Rectangle(0, 4, Width, Height - 8));
+            BrandAsset.DrawLogo(e.Graphics, new Rectangle(0, 4, Width, Height - 8));
         }
     }
 }

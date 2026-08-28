@@ -4,6 +4,15 @@ All notable changes to iRacing Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.0.0] - 2026-08-28
+
+### Changed
+
+- Rebranded the launcher from its previous identity to Digital Downforce Sim Racing (DDS).
+- Reworked the full interface around the DDS violet, magenta, blue, cyan, and silver palette.
+- Replaced the previous artwork, application icon, tray icon, company metadata, and public documentation with the supplied DDS logo and banner.
+- Moved settings to `%APPDATA%\DDS\iRacing Teammate` while automatically migrating existing user configuration.
+
 ## [1.2.3] - 2026-08-26
 
 ### Added
@@ -50,7 +59,7 @@ The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` forma
 
 - iRacing detection now reads its installed location and scans fixed-drive game folders.
 - Garage61 detection supports its current roaming installation directory.
-- Snails Motorsport mascot is embedded in the executable.
+- Brand artwork is embedded in the executable.
 
 ## [1.0.0] - 2026-08-19
 

@@ -1,6 +1,6 @@
 # iRacing Teammate
 
-**Teammate for your software — by Snails Motorsport.**
+**Teammate for your software — by Digital Downforce Sim Racing.**
 
 A lightweight Windows pit-wall launcher that starts an iRacing software stack in a
 predictable order and keeps the pre-race routine in one place.
@@ -18,7 +18,7 @@ came from this repository's Releases page before running it.
 
 ## Features
 
-- Snails Motorsport livery-inspired interface and embedded mascot.
+- Digital Downforce Sim Racing interface with embedded DDS logo and banner artwork.
 - Automatic detection of iRacing and common companion applications.
 - Sequential launch with an individual delay for every application.
 - Live running-state indicators and configurable executable paths.
@@ -30,7 +30,8 @@ came from this repository's Releases page before running it.
 - **Auto Mode** starts selected companion apps when an iRacing simulator session
   begins and stops only Teammate-launched apps after the session ends.
 - GitHub Releases update check with confirmation before opening a download page.
-- Persistent settings under `%APPDATA%\Snails Motorsport\iRacing Teammate`.
+- Persistent settings under `%APPDATA%\DDS\iRacing Teammate`, with automatic
+  migration from earlier branded releases.
 
 ## Supported software
 
@@ -101,7 +102,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes and
 
 ## License and trademarks
 
-Copyright © 2026 Snails Motorsport. All rights reserved. See [LICENSE](LICENSE).
+Copyright © 2026 Digital Downforce Sim Racing. All rights reserved. See [LICENSE](LICENSE).
+The supplied DDS artwork is documented in [docs/BRAND_ASSETS.md](docs/BRAND_ASSETS.md).
 
 iRacing and the names of third-party companion applications are trademarks of their
 respective owners. This independent project is not affiliated with or endorsed by

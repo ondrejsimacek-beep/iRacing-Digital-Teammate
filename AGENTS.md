@@ -2,9 +2,9 @@
 
 ## Product identity
 
-- Product: **iRacing Teammate — Teammate for your software** by Snails Motorsport.
-- Keep the dark charcoal, warm gold, silver, and restrained blue livery-inspired design.
-- Keep the Snails Motorsport mascot derived from the supplied race-car livery asset.
+- Product: **iRacing Teammate — Teammate for your software** by Digital Downforce Sim Racing (DDS).
+- Keep the deep violet, magenta, electric blue, cyan, and cool silver DDS design system.
+- Keep the supplied DDS logo and banner as the authoritative brand assets.
 - The primary user language is Czech; repository documentation and public release notes are English unless requested otherwise.
 
 ## Core behavior and safety
@@ -14,7 +14,7 @@
 - Preserve support for launchers that hand execution to replacement or child processes, especially Electron/Squirrel apps such as irDashies.
 - Use exact process-name queries. Do not reintroduce broad process enumeration or antivirus exclusions.
 - Use the current user's standard Startup folder shortcut for Start with Windows. Do not restore registry Run-key persistence.
-- VRS Setup Downloader is a separate Snails Motorsport project and must never be bundled or listed here. VRS Telemetry Logger is an allowed external companion app.
+- VRS Setup Downloader is a separate DDS project and must never be bundled or listed here. VRS Telemetry Logger is an allowed external companion app.
 
 ## Supported local priorities
 

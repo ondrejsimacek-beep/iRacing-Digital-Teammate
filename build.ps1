@@ -34,25 +34,31 @@ $updateRepositoryPath = Join-Path $objectDir 'update-repository.txt'
 $repositoryValue = if ([string]::IsNullOrWhiteSpace($UpdateRepository)) { '' } else { $UpdateRepository.Trim() }
 [System.IO.File]::WriteAllText($updateRepositoryPath, $repositoryValue, [System.Text.Encoding]::UTF8)
 
-$iconPath = Join-Path $objectDir 'snails-teammate.ico'
-$mascotPath = Join-Path $projectDir 'snails-mascot.png'
-if (-not (Test-Path -LiteralPath $mascotPath)) {
-    throw "Mascot asset not found: $mascotPath"
+$iconPath = Join-Path $objectDir 'dds-teammate.ico'
+$logoPath = Join-Path $projectDir 'dds-logo.png'
+$bannerPath = Join-Path $projectDir 'dds-banner.png'
+if (-not (Test-Path -LiteralPath $logoPath)) {
+    throw "DDS logo asset not found: $logoPath"
+}
+if (-not (Test-Path -LiteralPath $bannerPath)) {
+    throw "DDS banner asset not found: $bannerPath"
 }
 Add-Type -AssemblyName System.Drawing
 $bitmap = New-Object System.Drawing.Bitmap 64, 64
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$graphics.Clear([System.Drawing.Color]::FromArgb(10, 12, 15))
-$mascotImage = [System.Drawing.Image]::FromFile($mascotPath)
-$graphics.DrawImage($mascotImage, 2, 15, 60, 34)
+$graphics.Clear([System.Drawing.Color]::FromArgb(9, 0, 25))
+$logoImage = [System.Drawing.Image]::FromFile($logoPath)
+$destination = New-Object System.Drawing.Rectangle 4, 8, 56, 44
+$source = New-Object System.Drawing.Rectangle 55, 300, 340, 265
+$graphics.DrawImage($logoImage, $destination, $source, [System.Drawing.GraphicsUnit]::Pixel)
 $icon = [System.Drawing.Icon]::FromHandle($bitmap.GetHicon())
 $iconStream = [System.IO.File]::Create($iconPath)
 $icon.Save($iconStream)
 $iconStream.Dispose()
 $icon.Dispose()
-$mascotImage.Dispose()
+$logoImage.Dispose()
 $graphics.Dispose()
 $bitmap.Dispose()
 
@@ -65,12 +71,14 @@ $sources = @(
 )
 $outputExe = Join-Path $outputDir 'iRacing Teammate.exe'
 $outputArgument = '/out:' + $outputExe
-$resourceArgument = '/resource:' + $mascotPath + ',SnailsMascot'
+$logoResourceArgument = '/resource:' + $logoPath + ',DdsLogo'
+$bannerResourceArgument = '/resource:' + $bannerPath + ',DdsBanner'
 $updateRepositoryArgument = '/resource:' + $updateRepositoryPath + ',UpdateRepository'
 
 & $compiler /nologo /target:winexe /optimize+ /platform:anycpu `
     ('/win32icon:' + $iconPath) `
-    $resourceArgument `
+    $logoResourceArgument `
+    $bannerResourceArgument `
     $updateRepositoryArgument `
     /reference:System.dll `
     /reference:System.Core.dll `

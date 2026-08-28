@@ -4,7 +4,7 @@
 
 Please do not disclose security vulnerabilities in a public issue. Use GitHub's
 private vulnerability reporting feature when enabled for the repository, or contact
-the Snails Motorsport maintainers privately.
+the Digital Downforce Sim Racing maintainers privately.
 
 Include the affected version, reproduction steps, potential impact, and any proposed
 mitigation. Do not include credentials, tokens, or other personal data.
