@@ -5,6 +5,7 @@
 - Product: **iRacing Digital Teammate — Teammate for your software** by Digital Downforce Sim Racing (DDS).
 - Keep a graphite and near-black foundation with restrained violet and blue accents inspired by the DDS banner. Avoid large saturated purple surfaces.
 - Keep the supplied DDS logo and banner as the authoritative brand assets.
+- Keep sidebar elements functional: the status panel reports session, stack readiness, and Auto Mode; do not add decorative navigation that suggests unavailable pages.
 - The primary user language is Czech; repository documentation and public release notes are English unless requested otherwise.
 
 ## Core behavior and safety

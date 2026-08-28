@@ -4,6 +4,13 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.1.1] - 2026-08-28
+
+### Changed
+
+- Replaced the decorative sidebar navigation with a live status panel for the iRacing session, configured race stack, and Auto Mode.
+- Simplified the sidebar hierarchy while preserving the restrained DDS visual treatment.
+
 ## [2.1.0] - 2026-08-28
 
 ### Added
