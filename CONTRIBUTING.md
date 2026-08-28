@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve iRacing Teammate.
+Thanks for helping improve iRacing Digital Teammate.
 
 ## Before opening a change
 

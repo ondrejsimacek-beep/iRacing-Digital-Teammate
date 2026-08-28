@@ -25,13 +25,26 @@ jobs:
           }
           .\build.ps1 -Release -UpdateRepository "${{ github.repository }}"
 
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: powershell
+        run: .\build-installer.ps1
+
       - name: Package release
         shell: powershell
         run: |
           $tag = "${{ github.ref_name }}"
-          Compress-Archive -LiteralPath '.\dist\iRacing Teammate.exe', '.\dist\README.md' -DestinationPath ".\dist\iRacing-Teammate-$tag.zip" -Force
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath ".\dist\iRacing-Teammate-$tag.zip").Hash.ToLowerInvariant()
-          "$hash  iRacing-Teammate-$tag.zip" | Set-Content -LiteralPath ".\dist\iRacing-Teammate-$tag.zip.sha256" -Encoding ascii
+          $zip = ".\dist\iRacing-Digital-Teammate-$tag-portable.zip"
+          $setup = ".\dist\iRacing-Digital-Teammate-Setup-$tag.exe"
+          Compress-Archive -LiteralPath '.\dist\iRacing Digital Teammate.exe', '.\dist\README.md' -DestinationPath $zip -Force
+          foreach ($asset in @($setup, $zip)) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $asset).Hash.ToLowerInvariant()
+            $name = Split-Path -Leaf $asset
+            "$hash  $name" | Set-Content -LiteralPath ($asset + '.sha256') -Encoding ascii
+          }
 
       - name: Publish GitHub Release
         shell: powershell
@@ -39,4 +52,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "${{ github.ref_name }}"
-          gh release create $tag ".\dist\iRacing-Teammate-$tag.zip" ".\dist\iRacing-Teammate-$tag.zip.sha256" --generate-notes --title "iRacing Teammate $tag"
+          gh release create $tag ".\dist\iRacing-Digital-Teammate-Setup-$tag.exe" ".\dist\iRacing-Digital-Teammate-Setup-$tag.exe.sha256" ".\dist\iRacing-Digital-Teammate-$tag-portable.zip" ".\dist\iRacing-Digital-Teammate-$tag-portable.zip.sha256" --generate-notes --title "iRacing Digital Teammate $tag"

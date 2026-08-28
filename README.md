@@ -1,24 +1,26 @@
-# iRacing Teammate
+# iRacing Digital Teammate
 
 **Teammate for your software — by Digital Downforce Sim Racing.**
 
 A lightweight Windows pit-wall launcher that starts an iRacing software stack in a
 predictable order and keeps the pre-race routine in one place.
 
-![iRacing Teammate interface](docs/assets/launcher-preview.png)
+![iRacing Digital Teammate interface](docs/assets/launcher-preview.png)
 
 ## Download
 
-Download the newest packaged build from the repository's
-[latest GitHub Release](../../releases/latest). Extract the ZIP and run
-`iRacing Teammate.exe`; no installer or administrator rights are required.
+Download the Windows installer from the repository's
+[latest GitHub Release](../../releases/latest). Run
+`iRacing-Digital-Teammate-Setup-vX.Y.Z.exe`; it installs for the current user
+without administrator rights, adds the app to Start and Installed apps, and
+provides a standard uninstaller. A portable ZIP is also available.
 
 Windows SmartScreen may warn about unsigned community builds. Verify that the file
 came from this repository's Releases page before running it.
 
 ## Features
 
-- Digital Downforce Sim Racing interface with embedded DDS logo and banner artwork.
+- Subtle graphite Digital Downforce Sim Racing interface with embedded DDS logo and banner artwork.
 - Automatic detection of iRacing and common companion applications.
 - Sequential launch with an individual delay for every application.
 - Live running-state indicators and configurable executable paths.
@@ -30,7 +32,7 @@ came from this repository's Releases page before running it.
 - **Auto Mode** starts selected companion apps when an iRacing simulator session
   begins and stops only Teammate-launched apps after the session ends.
 - GitHub Releases update check with confirmation before opening a download page.
-- Persistent settings under `%APPDATA%\DDS\iRacing Teammate`, with automatic
+- Persistent settings under `%APPDATA%\DDS\iRacing Digital Teammate`, with automatic
   migration from earlier branded releases.
 
 ## Supported software
@@ -81,16 +83,17 @@ To embed a GitHub update source in a local build:
 .\build.ps1 -UpdateRepository "owner/iRacing-Teammate"
 ```
 
-The executable is written to `dist\iRacing Teammate.exe`. `version.txt` is the
-single source of truth for the application version.
+The executable is written to `dist\iRacing Digital Teammate.exe`. Install Inno
+Setup 6 and run `build-installer.ps1` to create the Windows installer. `version.txt`
+is the single source of truth for the application version.
 
 ## Publishing a release
 
 1. Update `version.txt` and `CHANGELOG.md`.
 2. Commit the change.
 3. Create and push a matching tag, for example `v1.2.0`.
-4. GitHub Actions builds the executable, creates a ZIP and SHA-256 checksum, and
-   publishes a GitHub Release with generated notes.
+4. GitHub Actions builds the executable and installer, creates a portable ZIP,
+   generates SHA-256 checksums, and publishes a GitHub Release.
 
 The release build automatically embeds the repository identity supplied by GitHub,
 so **Check for updates** points to the correct Releases feed without manual source edits.

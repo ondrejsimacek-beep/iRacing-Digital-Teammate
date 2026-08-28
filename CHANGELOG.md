@@ -1,8 +1,21 @@
 # Changelog
 
-All notable changes to iRacing Teammate are documented here.
+All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
+
+## [2.1.0] - 2026-08-28
+
+### Added
+
+- Added a per-user Windows installer that creates Start menu entries, registers the app in Installed apps, and provides a standard uninstaller.
+- Kept a portable ZIP release for users who do not want to install the application.
+
+### Changed
+
+- Renamed the product to iRacing Digital Teammate.
+- Softened the interface to a graphite and near-black base with restrained violet and blue accents inspired by the DDS banner.
+- Moved settings to `%APPDATA%\DDS\iRacing Digital Teammate` with automatic migration from previous releases.
 
 ## [2.0.0] - 2026-08-28
 

@@ -18,7 +18,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             {
                 if (!created)
                 {
-                    MessageBox.Show("iRacing Teammate is already running.", "Digital Downforce Sim Racing",
+                    MessageBox.Show("iRacing Digital Teammate is already running.", "Digital Downforce Sim Racing",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }

@@ -260,14 +260,13 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "DDS",
-                "iRacing Teammate");
+                "iRacing Digital Teammate");
             filePath = Path.Combine(directory, "settings.xml");
+            string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string previousDdsPath = Path.Combine(roaming, "DDS", "iRacing Teammate", "settings.xml");
             string legacyBrandDirectory = "Sna" + "ils Motorsport";
-            legacyFilePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                legacyBrandDirectory,
-                "iRacing Teammate",
-                "settings.xml");
+            string originalPath = Path.Combine(roaming, legacyBrandDirectory, "iRacing Teammate", "settings.xml");
+            legacyFilePath = File.Exists(previousDdsPath) ? previousDdsPath : originalPath;
         }
 
         public LauncherSettings Load(List<AppDefinition> definitions)
@@ -526,9 +525,19 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
     public static class StartupManager
     {
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string ValueName = "iRacing Teammate";
+        private const string ValueName = "iRacing Digital Teammate";
+        private const string LegacyValueName = "iRacing Teammate";
 
         private static string ShortcutPath
+        {
+            get
+            {
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+                    "iRacing Digital Teammate.lnk");
+            }
+        }
+
+        private static string LegacyShortcutPath
         {
             get
             {
@@ -541,7 +550,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         {
             try
             {
-                return File.Exists(ShortcutPath);
+                return File.Exists(ShortcutPath) || File.Exists(LegacyShortcutPath);
             }
             catch { return false; }
         }
@@ -551,6 +560,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             try
             {
                 RemoveLegacyRunValue();
+                if (File.Exists(LegacyShortcutPath)) File.Delete(LegacyShortcutPath);
                 if (!enabled)
                 {
                     if (File.Exists(ShortcutPath)) File.Delete(ShortcutPath);
@@ -571,7 +581,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 shortcutType.InvokeMember("Arguments", BindingFlags.SetProperty, null, shortcut,
                     new object[] { "--minimized" });
                 shortcutType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut,
-                    new object[] { "Start iRacing Teammate minimized with Windows" });
+                    new object[] { "Start iRacing Digital Teammate minimized with Windows" });
                 shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
                 return true;
             }
@@ -583,7 +593,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             try
             {
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RunKey, true))
-                    if (key != null) key.DeleteValue(ValueName, false);
+                    if (key != null)
+                    {
+                        key.DeleteValue(ValueName, false);
+                        key.DeleteValue(LegacyValueName, false);
+                    }
             }
             catch { }
         }
@@ -629,7 +643,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 string json;
                 using (WebClient client = new WebClient())
                 {
-                    client.Headers.Add("User-Agent", "DDS-iRacing-Teammate");
+                    client.Headers.Add("User-Agent", "DDS-iRacing-Digital-Teammate");
                     client.Headers.Add("Accept", "application/vnd.github+json");
                     json = client.DownloadString(endpoint);
                 }

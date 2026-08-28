@@ -12,18 +12,18 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 {
     public static class Livery
     {
-        public static readonly Color Background = Color.FromArgb(9, 0, 25);
-        public static readonly Color Sidebar = Color.FromArgb(13, 2, 34);
-        public static readonly Color Surface = Color.FromArgb(22, 8, 47);
-        public static readonly Color SurfaceLight = Color.FromArgb(33, 15, 66);
-        public static readonly Color Carbon = Color.FromArgb(12, 1, 29);
-        public static readonly Color Gold = Color.FromArgb(224, 45, 238);
-        public static readonly Color GoldBright = Color.FromArgb(244, 94, 255);
-        public static readonly Color Silver = Color.FromArgb(218, 231, 255);
-        public static readonly Color Blue = Color.FromArgb(0, 222, 246);
-        public static readonly Color Text = Color.FromArgb(247, 248, 255);
-        public static readonly Color Muted = Color.FromArgb(154, 165, 195);
-        public static readonly Color Border = Color.FromArgb(58, 35, 99);
+        public static readonly Color Background = Color.FromArgb(13, 15, 23);
+        public static readonly Color Sidebar = Color.FromArgb(16, 18, 28);
+        public static readonly Color Surface = Color.FromArgb(22, 25, 36);
+        public static readonly Color SurfaceLight = Color.FromArgb(31, 35, 49);
+        public static readonly Color Carbon = Color.FromArgb(10, 12, 19);
+        public static readonly Color Gold = Color.FromArgb(119, 79, 184);
+        public static readonly Color GoldBright = Color.FromArgb(178, 126, 226);
+        public static readonly Color Silver = Color.FromArgb(215, 224, 239);
+        public static readonly Color Blue = Color.FromArgb(69, 157, 210);
+        public static readonly Color Text = Color.FromArgb(241, 244, 250);
+        public static readonly Color Muted = Color.FromArgb(145, 153, 171);
+        public static readonly Color Border = Color.FromArgb(47, 47, 65);
         public static readonly Color Success = Color.FromArgb(46, 212, 184);
         public static readonly Color Error = Color.FromArgb(255, 92, 122);
     }
@@ -65,7 +65,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             processes = new ProcessController();
             cards = new Dictionary<string, AppCard>();
 
-            Text = "iRacing Teammate — Digital Downforce Sim Racing";
+            Text = "iRacing Digital Teammate — Digital Downforce Sim Racing";
             Size = new Size(1280, 820);
             MinimumSize = new Size(1080, 700);
             StartPosition = FormStartPosition.CenterScreen;
@@ -314,7 +314,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             sidebar.Controls.Add(folder);
 
             Label footer = new Label();
-            footer.Text = "iRACING TEAMMATE  •  " + Assembly.GetExecutingAssembly().GetName().Version.ToString(3) +
+            footer.Text = "IRACING DIGITAL TEAMMATE  •  " + Assembly.GetExecutingAssembly().GetName().Version.ToString(3) +
                 "\nBY DDS";
             footer.ForeColor = Color.FromArgb(91, 98, 106);
             footer.Font = new Font("Segoe UI Semibold", 7.3F, FontStyle.Bold);
@@ -390,7 +390,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             }
             else
             {
-                MessageBox.Show(this, "Windows startup could not be changed.", "iRacing Teammate",
+                MessageBox.Show(this, "Windows startup could not be changed.", "iRacing Digital Teammate",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
@@ -464,7 +464,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     {
                         SetActivity("Update check failed.", Livery.Error);
                         MessageBox.Show(this, "GitHub update check failed:\n\n" + result.Error,
-                            "iRacing Teammate", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            "iRacing Digital Teammate", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
 
@@ -472,7 +472,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     {
                         SetActivity("A new version " + result.LatestVersion + " is available.", Livery.Success);
                         DialogResult download = MessageBox.Show(this,
-                            "A new iRacing Teammate version " + result.LatestVersion + " is available.\n\n" +
+                            "A new iRacing Digital Teammate version " + result.LatestVersion + " is available.\n\n" +
                             "Open the GitHub release page?",
                             "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
                         if (download == DialogResult.Yes && !String.IsNullOrWhiteSpace(result.ReleaseUrl))
@@ -481,7 +481,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     else
                     {
                         Version current = Assembly.GetExecutingAssembly().GetName().Version;
-                        SetActivity("iRacing Teammate is up to date.", Livery.Success);
+                        SetActivity("iRacing Digital Teammate is up to date.", Livery.Success);
                         MessageBox.Show(this,
                             "You are running the latest version (" + current.ToString(3) + ").",
                             "No updates available", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -788,7 +788,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             menu.BackColor = Livery.Surface;
             menu.ForeColor = Livery.Text;
 
-            ToolStripMenuItem openItem = new ToolStripMenuItem("Open iRacing Teammate");
+            ToolStripMenuItem openItem = new ToolStripMenuItem("Open iRacing Digital Teammate");
             openItem.Font = new Font(openItem.Font, FontStyle.Bold);
             openItem.Click += delegate { RestoreFromTray(); };
             menu.Items.Add(openItem);
@@ -800,7 +800,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
             trayIcon = new NotifyIcon();
             trayIcon.Icon = Icon;
-            trayIcon.Text = "iRacing Teammate — Digital Downforce Sim Racing";
+            trayIcon.Text = "iRacing Digital Teammate — DDS";
             trayIcon.ContextMenuStrip = menu;
             trayIcon.Visible = true;
             trayIcon.DoubleClick += delegate { RestoreFromTray(); };
@@ -836,7 +836,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             ShowInTaskbar = false;
             if (showHint && !trayHintShown && trayIcon != null)
             {
-                trayIcon.ShowBalloonTip(2500, "iRacing Teammate",
+                trayIcon.ShowBalloonTip(2500, "iRacing Digital Teammate",
                     "Teammate is still running and waiting for an iRacing session.", ToolTipIcon.Info);
                 trayHintShown = true;
             }
@@ -1069,15 +1069,15 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
             BrandAsset.DrawBanner(g, new Rectangle(Math.Max(0, w - 470), 0, 470, h));
 
-            using (Brush subtle = new SolidBrush(Color.FromArgb(28, 10, 55)))
+            using (Brush subtle = new SolidBrush(Color.FromArgb(24, 24, 38)))
                 for (int x = -h; x < Math.Max(600, w - 380); x += 24)
                     g.FillPolygon(subtle, new Point[] { new Point(x, h), new Point(x + 9, h), new Point(x + h, 0), new Point(x + h - 9, 0) });
 
             using (Brush dark = new SolidBrush(Color.FromArgb(236, Livery.Carbon)))
                 g.FillRectangle(dark, 0, 0, Math.Max(560, w - 405), h);
-            using (Brush magenta = new SolidBrush(Color.FromArgb(190, Livery.Gold)))
+            using (Brush magenta = new SolidBrush(Color.FromArgb(120, Livery.Gold)))
                 g.FillPolygon(magenta, new Point[] { new Point(w - 420, h), new Point(w - 372, 0), new Point(w - 354, 0), new Point(w - 401, h) });
-            using (Brush cyan = new SolidBrush(Color.FromArgb(190, Livery.Blue)))
+            using (Brush cyan = new SolidBrush(Color.FromArgb(125, Livery.Blue)))
                 g.FillPolygon(cyan, new Point[] { new Point(w - 395, h), new Point(w - 350, 0), new Point(w - 340, 0), new Point(w - 385, h) });
 
             using (Font kicker = new Font("Segoe UI Semibold", 8F, FontStyle.Bold))
@@ -1085,7 +1085,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 g.DrawString("DIGITAL DOWNFORCE SIM RACING  /  PIT WALL SYSTEM", kicker, goldText, 28, 24);
             using (Font title = new Font("Segoe UI Semibold", 28F, FontStyle.Bold))
             using (Brush text = new SolidBrush(Livery.Text))
-                g.DrawString("iRacing Teammate", title, text, 24, 48);
+                g.DrawString("iRacing Digital Teammate", title, text, 24, 48);
             using (Font subtitle = new Font("Segoe UI", 10F))
             using (Brush muted = new SolidBrush(Livery.Muted))
                 g.DrawString("Your software. One grid. Zero pre-race hassle.", subtitle, muted, 29, 103);
