@@ -45,6 +45,11 @@ OpenKneeboard, and Marvin's AIRA.
 
 Applications that are not detected automatically can be configured with **Browse**.
 
+CONSPIT Link 2.0 requires administrator rights. On its first Teammate-managed start,
+Windows asks once for permission to create a restricted Task Scheduler bridge. Later
+iRacing sessions can start and stop CONSPIT without repeated UAC prompts. The bridge
+accepts only `ConspitLink2.0.exe` installed under Program Files.
+
 ## Usage
 
 1. Select **Rescan** after the first launch.

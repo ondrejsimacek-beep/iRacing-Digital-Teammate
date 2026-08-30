@@ -12,6 +12,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         [STAThread]
         private static void Main(string[] args)
         {
+            if (args.Length == 3 && String.Equals(args[0], "--configure-elevated-task", StringComparison.OrdinalIgnoreCase))
+            {
+                Environment.ExitCode = ElevatedTaskBridge.Configure(args[1], args[2]);
+                return;
+            }
+
             try { SetProcessDPIAware(); } catch { }
             bool created;
             using (Mutex mutex = new Mutex(true, "DigitalDownforceSimRacing.IRacingTeammate", out created))

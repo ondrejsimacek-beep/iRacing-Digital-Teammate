@@ -6,9 +6,13 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Security;
 using System.Security.Cryptography;
+using System.Security.Principal;
+using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
+using System.Xml;
 using System.Xml.Serialization;
 using Microsoft.Win32;
 
@@ -58,6 +62,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public string ProcessName;
         public string Initials;
         public bool EnabledByDefault;
+        public bool RequiresElevationBridge;
         public string[] CandidatePaths;
     }
 
@@ -111,7 +116,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     Path.Combine(local, "Programs", "racelabapps", "RacelabApps.exe")),
                 Def("streamdeck", "Elgato Stream Deck", "CONTROLS", "StreamDeck", "SD", false,
                     Path.Combine(pf, "Elgato", "StreamDeck", "StreamDeck.exe")),
-                Def("conspit", "CONSPIT Launcher", "HARDWARE", "ConspitLink2.0", "CL", true,
+                ElevatedDef("conspit", "CONSPIT Launcher", "HARDWARE", "ConspitLink2.0", "CL", true,
                     Path.Combine(pfx86, "Conspit Link 2.0", "ConspitLink2.0.exe"),
                     Path.Combine(pf, "Conspit Link 2.0", "ConspitLink2.0.exe")),
                 Def("simconnectmanager", "SimConnect Manager", "HARDWARE", "SimConnectManager", "SC", true,
@@ -154,6 +159,14 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 EnabledByDefault = enabled,
                 CandidatePaths = paths.Where(delegate(string value) { return !String.IsNullOrWhiteSpace(value); }).ToArray()
             };
+        }
+
+        private static AppDefinition ElevatedDef(string key, string name, string category, string processName,
+            string initials, bool enabled, params string[] paths)
+        {
+            AppDefinition definition = Def(key, name, category, processName, initials, enabled, paths);
+            definition.RequiresElevationBridge = true;
+            return definition;
         }
 
         public static string DetectPath(AppDefinition definition)
@@ -331,6 +344,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
     public class ProcessController
     {
         private readonly Dictionary<string, List<Process>> tracked = new Dictionary<string, List<Process>>();
+        private readonly HashSet<string> elevatedTaskLaunches = new HashSet<string>();
         private readonly object sync = new object();
 
         public static bool IsIRacingSessionRunning()
@@ -397,6 +411,31 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             try
             {
                 HashSet<int> existingProcessIds = SnapshotProcessIds(definition.ProcessName);
+                if (definition.RequiresElevationBridge)
+                {
+                    if (!ElevatedTaskBridge.Launch(definition.Key, path, out error)) return false;
+
+                    List<Process> elevatedProcesses = new List<Process>();
+                    int stableElevatedScans = 0;
+                    for (int scan = 0; scan < 25 && stableElevatedScans < 3; scan++)
+                    {
+                        Thread.Sleep(200);
+                        bool added = AddNewProcesses(definition.ProcessName, existingProcessIds, elevatedProcesses);
+                        stableElevatedScans = elevatedProcesses.Count > 0 && !added ? stableElevatedScans + 1 : 0;
+                    }
+                    if (elevatedProcesses.Count == 0)
+                    {
+                        error = "The elevated application did not start.";
+                        return false;
+                    }
+                    lock (sync)
+                    {
+                        tracked[definition.Key] = elevatedProcesses;
+                        elevatedTaskLaunches.Add(definition.Key);
+                    }
+                    return true;
+                }
+
                 ProcessStartInfo info = new ProcessStartInfo(path);
                 info.WorkingDirectory = Path.GetDirectoryName(path);
                 info.UseShellExecute = true;
@@ -430,6 +469,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public bool StopTracked(AppDefinition definition)
         {
             List<Process> launchedProcesses = null;
+            bool elevatedTaskLaunch = false;
             lock (sync)
             {
                 if (tracked.ContainsKey(definition.Key))
@@ -437,8 +477,18 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     launchedProcesses = tracked[definition.Key];
                     tracked.Remove(definition.Key);
                 }
+                elevatedTaskLaunch = elevatedTaskLaunches.Remove(definition.Key);
             }
-            if (launchedProcesses == null) return false;
+            if (launchedProcesses == null && !elevatedTaskLaunch) return false;
+
+            if (elevatedTaskLaunch)
+            {
+                bool stopped = ElevatedTaskBridge.Stop(definition.Key);
+                if (launchedProcesses != null)
+                    foreach (Process process in launchedProcesses)
+                        try { process.Dispose(); } catch { }
+                return stopped;
+            }
 
             bool foundRunningProcess = false;
             foreach (Process process in launchedProcesses.GroupBy(delegate(Process item)
@@ -521,6 +571,175 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             }
             catch { }
             return added;
+        }
+    }
+
+    public static class ElevatedTaskBridge
+    {
+        private const string ConspitKey = "conspit";
+        private const string ConspitTaskName = "DDS iRacing Digital Teammate - CONSPIT Launcher";
+
+        public static bool Launch(string key, string path, out string error)
+        {
+            error = "";
+            if (!IsAllowedTarget(key, path))
+            {
+                error = "CONSPIT admin bridge only allows ConspitLink2.0.exe installed under Program Files.";
+                return false;
+            }
+
+            if (!IsConfigured(key, path))
+            {
+                try
+                {
+                    ProcessStartInfo setup = new ProcessStartInfo(Assembly.GetExecutingAssembly().Location);
+                    setup.Arguments = "--configure-elevated-task " + key + " \"" + path + "\"";
+                    setup.Verb = "runas";
+                    setup.UseShellExecute = true;
+                    Process process = Process.Start(setup);
+                    if (process == null)
+                    {
+                        error = "Windows did not start the one-time admin bridge setup.";
+                        return false;
+                    }
+                    process.WaitForExit();
+                    int exitCode = process.ExitCode;
+                    process.Dispose();
+                    if (exitCode != 0 || !IsConfigured(key, path))
+                    {
+                        error = "The one-time CONSPIT admin bridge setup was not completed.";
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    error = "The one-time CONSPIT admin bridge setup was cancelled or failed: " + ex.Message;
+                    return false;
+                }
+            }
+
+            int result = RunSchtasks("/Run /TN \"" + TaskName(key) + "\"", out error);
+            if (result != 0)
+            {
+                if (String.IsNullOrWhiteSpace(error)) error = "Task Scheduler could not start CONSPIT.";
+                return false;
+            }
+            return true;
+        }
+
+        public static bool Stop(string key)
+        {
+            string output;
+            return RunSchtasks("/End /TN \"" + TaskName(key) + "\"", out output) == 0;
+        }
+
+        public static int Configure(string key, string path)
+        {
+            if (!IsAllowedTarget(key, path)) return 10;
+
+            string xmlPath = Path.Combine(Path.GetTempPath(), "dds-conspit-task-" + Guid.NewGuid().ToString("N") + ".xml");
+            try
+            {
+                string sid = WindowsIdentity.GetCurrent().User.Value;
+                string command = SecurityElement.Escape(Path.GetFullPath(path));
+                string workingDirectory = SecurityElement.Escape(Path.GetDirectoryName(Path.GetFullPath(path)));
+                string xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\r\n" +
+                    "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">" +
+                    "<RegistrationInfo><Author>Digital Downforce Sim Racing</Author>" +
+                    "<Description>Starts and stops CONSPIT Launcher with an iRacing session.</Description></RegistrationInfo>" +
+                    "<Principals><Principal id=\"Author\"><UserId>" + SecurityElement.Escape(sid) + "</UserId>" +
+                    "<LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals>" +
+                    "<Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>" +
+                    "<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>" +
+                    "<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><AllowHardTerminate>true</AllowHardTerminate>" +
+                    "<StartWhenAvailable>false</StartWhenAvailable><RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>" +
+                    "<AllowStartOnDemand>true</AllowStartOnDemand><Enabled>true</Enabled><Hidden>false</Hidden>" +
+                    "<RunOnlyIfIdle>false</RunOnlyIfIdle><WakeToRun>false</WakeToRun>" +
+                    "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>7</Priority></Settings>" +
+                    "<Actions Context=\"Author\"><Exec><Command>" + command + "</Command>" +
+                    "<WorkingDirectory>" + workingDirectory + "</WorkingDirectory></Exec></Actions></Task>";
+                File.WriteAllText(xmlPath, xml, Encoding.Unicode);
+                string output;
+                return RunSchtasks("/Create /TN \"" + TaskName(key) + "\" /XML \"" + xmlPath + "\" /F", out output);
+            }
+            catch { return 11; }
+            finally
+            {
+                try { File.Delete(xmlPath); } catch { }
+            }
+        }
+
+        private static bool IsConfigured(string key, string path)
+        {
+            string output;
+            if (RunSchtasks("/Query /TN \"" + TaskName(key) + "\" /XML", out output) != 0 ||
+                String.IsNullOrWhiteSpace(output)) return false;
+            try
+            {
+                XmlDocument document = new XmlDocument();
+                document.LoadXml(output);
+                XmlNodeList commands = document.GetElementsByTagName("Command");
+                return commands.Count == 1 && String.Equals(Path.GetFullPath(commands[0].InnerText),
+                    Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
+        private static bool IsAllowedTarget(string key, string path)
+        {
+            try
+            {
+                if (!String.Equals(key, ConspitKey, StringComparison.OrdinalIgnoreCase) ||
+                    String.IsNullOrWhiteSpace(path) || !File.Exists(path) || path.IndexOf('"') >= 0 ||
+                    !String.Equals(Path.GetFileName(path), "ConspitLink2.0.exe", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                string fullPath = Path.GetFullPath(path);
+                string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+                return IsUnder(fullPath, programFiles) || IsUnder(fullPath, programFilesX86);
+            }
+            catch { return false; }
+        }
+
+        private static bool IsUnder(string path, string root)
+        {
+            if (String.IsNullOrWhiteSpace(root)) return false;
+            string normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string TaskName(string key)
+        {
+            return String.Equals(key, ConspitKey, StringComparison.OrdinalIgnoreCase) ? ConspitTaskName : "";
+        }
+
+        private static int RunSchtasks(string arguments, out string output)
+        {
+            output = "";
+            try
+            {
+                ProcessStartInfo info = new ProcessStartInfo("schtasks.exe", arguments);
+                info.UseShellExecute = false;
+                info.CreateNoWindow = true;
+                info.RedirectStandardOutput = true;
+                info.RedirectStandardError = true;
+                Process process = Process.Start(info);
+                if (process == null) return -1;
+                string standardOutput = process.StandardOutput.ReadToEnd();
+                string standardError = process.StandardError.ReadToEnd();
+                process.WaitForExit(10000);
+                int exitCode = process.HasExited ? process.ExitCode : -1;
+                if (!process.HasExited) try { process.Kill(); } catch { }
+                process.Dispose();
+                output = String.IsNullOrWhiteSpace(standardError) ? standardOutput : standardError;
+                return exitCode;
+            }
+            catch (Exception ex)
+            {
+                output = ex.Message;
+                return -1;
+            }
         }
     }
 

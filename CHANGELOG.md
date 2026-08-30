@@ -4,6 +4,14 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.2.1] - 2026-08-30
+
+### Fixed
+
+- Added a restricted one-time Task Scheduler bridge for the administrator-only CONSPIT Launcher.
+- CONSPIT can now start without a UAC prompt on every iRacing session and is stopped through the same elevated task when the session ends.
+- Limited the elevated bridge to `ConspitLink2.0.exe` installed under Program Files.
+
 ## [2.2.0] - 2026-08-28
 
 ### Added
