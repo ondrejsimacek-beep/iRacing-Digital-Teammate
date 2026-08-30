@@ -4,6 +4,15 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.3.0] - 2026-08-30
+
+### Added
+
+- Added a silent automatic update check after startup and while Teammate remains active,
+  limited to once every 24 hours.
+- Added a notification-area alert and menu action when a new version is available.
+- Kept update downloads and installation behind explicit user confirmation.
+
 ## [2.2.1] - 2026-08-30
 
 ### Fixed

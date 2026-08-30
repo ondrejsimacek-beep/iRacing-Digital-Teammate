@@ -25,6 +25,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public int DefaultDelaySeconds { get; set; }
         public string UpdateRepository { get; set; }
         public bool AutoModeEnabled { get; set; }
+        public DateTime LastAutomaticUpdateCheckUtc { get; set; }
 
         public LauncherSettings()
         {
@@ -32,6 +33,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             DefaultDelaySeconds = 2;
             UpdateRepository = "";
             AutoModeEnabled = true;
+            LastAutomaticUpdateCheckUtc = DateTime.MinValue;
         }
     }
 
