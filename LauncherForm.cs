@@ -48,6 +48,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private Label sidebarStackState;
         private Label sidebarAutoState;
         private readonly System.Windows.Forms.Timer refreshTimer;
+        private readonly System.Windows.Forms.Timer automaticUpdateTimer;
         private volatile bool operationRunning;
         private volatile bool autoTransitionRunning;
         private bool showHidden;
@@ -55,6 +56,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private readonly bool previewMode;
         private readonly bool startMinimized;
         private NotifyIcon trayIcon;
+        private ToolStripMenuItem updateAvailableMenuItem;
+        private UpdateCheckResult pendingUpdate;
         private bool exitRequested;
         private bool trayHintShown;
 
@@ -215,6 +218,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             refreshTimer.Tick += delegate { RefreshStatuses(); };
             refreshTimer.Start();
 
+            automaticUpdateTimer = new System.Windows.Forms.Timer();
+            automaticUpdateTimer.Interval = 60 * 60 * 1000;
+            automaticUpdateTimer.Tick += delegate { StartAutomaticUpdateCheck(); };
+            if (!previewMode) automaticUpdateTimer.Start();
+
             if (!previewMode) InitializeTray();
             Shown += delegate
             {
@@ -227,6 +235,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     Opacity = 1D;
                     BeginInvoke(new MethodInvoker(delegate { MinimizeToTray(false); }));
                 }
+                if (!previewMode)
+                    BeginInvoke(new MethodInvoker(StartAutomaticUpdateCheck));
             };
         }
 
@@ -433,10 +443,30 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
         private void CheckForUpdates()
         {
+            ClearPendingUpdate();
+            CheckForUpdates(false);
+        }
+
+        private void StartAutomaticUpdateCheck()
+        {
+            if (updateButton == null || !updateButton.Enabled) return;
+            DateTime now = DateTime.UtcNow;
+            DateTime last = settings.LastAutomaticUpdateCheckUtc;
+            if (last != DateTime.MinValue && last <= now && now - last < TimeSpan.FromHours(24D))
+                return;
+
+            settings.LastAutomaticUpdateCheckUtc = now;
+            store.Save(settings);
+            CheckForUpdates(true);
+        }
+
+        private void CheckForUpdates(bool automatic)
+        {
             if (updateButton == null || !updateButton.Enabled) return;
             updateButton.Enabled = false;
             updateButton.Text = "CHECKING…";
-            SetActivity("Checking GitHub Releases for updates…", Livery.GoldBright);
+            if (!automatic)
+                SetActivity("Checking GitHub Releases for updates…", Livery.GoldBright);
 
             Thread worker = new Thread(delegate()
             {
@@ -449,6 +479,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
                     if (!result.Configured)
                     {
+                        if (automatic) return;
                         SetActivity("Update checker is ready; GitHub repository is not configured yet.", Livery.Muted);
                         DialogResult open = MessageBox.Show(this,
                             "The update checker is implemented, but the GitHub repository has not been assigned yet.\n\n" +
@@ -465,6 +496,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
                     if (!String.IsNullOrWhiteSpace(result.Error))
                     {
+                        if (automatic) return;
                         SetActivity("Update check failed.", Livery.Error);
                         MessageBox.Show(this, "GitHub update check failed:\n\n" + result.Error,
                             "iRacing Digital Teammate", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -474,14 +506,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     if (result.UpdateAvailable)
                     {
                         SetActivity("A new version " + result.LatestVersion + " is available.", Livery.Success);
-                        DialogResult download = MessageBox.Show(this,
-                            "A new iRacing Digital Teammate version " + result.LatestVersion + " is available.\n\n" +
-                            "Download and verify the update in the background?",
-                            "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-                        if (download == DialogResult.Yes)
-                            DownloadUpdate(result);
+                        if (automatic)
+                            ShowUpdateAvailableNotification(result);
+                        else
+                            PromptToDownloadUpdate(result);
                     }
-                    else
+                    else if (!automatic)
                     {
                         Version current = Assembly.GetExecutingAssembly().GetName().Version;
                         SetActivity("iRacing Digital Teammate is up to date.", Livery.Success);
@@ -493,6 +523,47 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             });
             worker.IsBackground = true;
             worker.Start();
+        }
+
+        private void ShowUpdateAvailableNotification(UpdateCheckResult update)
+        {
+            pendingUpdate = update;
+            if (updateAvailableMenuItem != null)
+            {
+                updateAvailableMenuItem.Text = "Install update " + update.LatestVersion;
+                updateAvailableMenuItem.Visible = true;
+            }
+            if (trayIcon != null)
+            {
+                trayIcon.ShowBalloonTip(8000, "iRacing Digital Teammate update",
+                    "Version " + update.LatestVersion + " is available. Click to review it.",
+                    ToolTipIcon.Info);
+            }
+        }
+
+        private void OfferPendingUpdate()
+        {
+            UpdateCheckResult update = pendingUpdate;
+            if (update == null) return;
+            ClearPendingUpdate();
+            RestoreFromTray();
+            PromptToDownloadUpdate(update);
+        }
+
+        private void ClearPendingUpdate()
+        {
+            pendingUpdate = null;
+            if (updateAvailableMenuItem != null) updateAvailableMenuItem.Visible = false;
+        }
+
+        private void PromptToDownloadUpdate(UpdateCheckResult update)
+        {
+            DialogResult download = MessageBox.Show(this,
+                "A new iRacing Digital Teammate version " + update.LatestVersion + " is available.\n\n" +
+                "Download and verify the update in the background?",
+                "Update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (download == DialogResult.Yes)
+                DownloadUpdate(update);
         }
 
         private void DownloadUpdate(UpdateCheckResult update)
@@ -860,6 +931,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             openItem.Font = new Font(openItem.Font, FontStyle.Bold);
             openItem.Click += delegate { RestoreFromTray(); };
             menu.Items.Add(openItem);
+
+            updateAvailableMenuItem = new ToolStripMenuItem("Review available update");
+            updateAvailableMenuItem.Visible = false;
+            updateAvailableMenuItem.Click += delegate { OfferPendingUpdate(); };
+            menu.Items.Add(updateAvailableMenuItem);
             menu.Items.Add(new ToolStripSeparator());
 
             ToolStripMenuItem exitItem = new ToolStripMenuItem("Exit");
@@ -872,6 +948,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             trayIcon.ContextMenuStrip = menu;
             trayIcon.Visible = true;
             trayIcon.DoubleClick += delegate { RestoreFromTray(); };
+            trayIcon.BalloonTipClicked += delegate { OfferPendingUpdate(); };
 
             Resize += delegate
             {
@@ -888,12 +965,15 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             };
             FormClosed += delegate
             {
+                automaticUpdateTimer.Stop();
+                automaticUpdateTimer.Dispose();
                 if (trayIcon != null)
                 {
                     trayIcon.Visible = false;
                     trayIcon.Dispose();
                     trayIcon = null;
                 }
+                updateAvailableMenuItem = null;
                 menu.Dispose();
             };
         }
@@ -924,6 +1004,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             exitRequested = true;
             if (trayIcon != null) trayIcon.Visible = false;
             refreshTimer.Stop();
+            automaticUpdateTimer.Stop();
             Close();
         }
 

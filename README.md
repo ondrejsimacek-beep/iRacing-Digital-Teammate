@@ -31,8 +31,10 @@ came from this repository's Releases page before running it.
   close button keep Teammate available beside the clock without occupying the taskbar.
 - **Auto Mode** starts selected companion apps when an iRacing simulator session
   begins and stops only Teammate-launched apps after the session ends.
-- Background updates from GitHub Releases with SHA-256 verification, confirmation,
-  in-place installation, and automatic restart in the notification area.
+- A silent update check runs after startup and while Teammate remains active, at most
+  once every 24 hours, and announces new versions in the notification area. Downloads
+  and installation still require confirmation and use SHA-256 verification before an
+  in-place update and restart.
 - Persistent settings under `%APPDATA%\DDS\iRacing Digital Teammate`, with automatic
   migration from earlier branded releases.
 
