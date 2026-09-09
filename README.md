@@ -42,8 +42,8 @@ came from this repository's Releases page before running it.
 
 iRacing, Crew Chief V4, Trading Paints, Garage61, irDashies, Edge Overlays,
 GO Fast (GO Setups), SimHub, iOverlay, Racelab, Elgato Stream Deck, CONSPIT
-Launcher, SimConnect Manager, iRSidekick, VRS Telemetry Logger, Kapps, Joel Real Timing,
-OpenKneeboard, and Marvin's AIRA.
+Launcher, SimConnect Manager, MOZA Pit House, iRSidekick, VRS Telemetry Logger,
+Kapps, Joel Real Timing, OpenKneeboard, and Marvin's AIRA.
 
 Applications that are not detected automatically can be configured with **Browse**.
 
@@ -61,9 +61,10 @@ accepts only `ConspitLink2.0.exe` installed under Program Files.
 5. Use **Stop launched** only when you intentionally want to close processes that
    were started by Teammate.
 
-With **Auto Mode** enabled, Teammate starts with Windows and waits in the background
-for `iRacingSim*`. Starting the iRacing UI alone does not trigger companion apps;
-they start when the simulator session process appears. A three-second confirmation
+With **Auto Mode** enabled, Teammate waits in the background for `iRacingSim*` while
+it is running. Enable **Start with Windows** separately if Teammate should be available
+automatically after sign-in. Starting the iRacing UI alone does not trigger companion
+apps; they start when the simulator session process appears. A three-second confirmation
 window prevents a brief process transition from triggering premature cleanup.
 
 Closing Teammate itself does not close racing software.

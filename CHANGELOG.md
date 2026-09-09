@@ -4,6 +4,17 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.4.0] - 2026-09-09
+
+### Added
+
+- Added automatic detection and lifecycle support for MOZA Pit House.
+
+### Fixed
+
+- Decoupled Auto Mode from Start with Windows so enabling Auto Mode no longer creates
+  or restores a Windows startup shortcut after the user has disabled it.
+
 ## [2.3.0] - 2026-08-30
 
 ### Added

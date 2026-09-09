@@ -358,7 +358,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             };
 
             RefreshAutoModeButton();
-            if (!previewMode && (settings.AutoModeEnabled || StartupManager.IsEnabled()))
+            if (!previewMode && StartupManager.IsEnabled())
                 StartupManager.SetEnabled(true, Application.ExecutablePath);
             RefreshStartupButton();
 
@@ -414,7 +414,6 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             store.Save(settings);
             if (settings.AutoModeEnabled)
             {
-                StartupManager.SetEnabled(true, Application.ExecutablePath);
                 sessionWasRunning = false;
                 SetActivity("Auto Mode enabled — waiting for an iRacing session.", Livery.Success);
             }
