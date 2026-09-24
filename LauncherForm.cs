@@ -645,7 +645,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             {
                 card.Setting.Path = dialog.FileName;
                 card.Setting.Enabled = true;
-                card.RefreshView(processes.IsRunning(card.Definition));
+                card.RefreshView(processes.IsRunning(card.Definition), processes.IsManaged(card.Definition));
                 store.Save(settings);
                 SetActivity(card.Definition.Name + " is configured.", Livery.Success);
                 UpdateStackStatus();
@@ -668,7 +668,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                         found++;
                     }
                 }
-                cards[definition.Key].RefreshView(processes.IsRunning(definition));
+                cards[definition.Key].RefreshView(processes.IsRunning(definition), processes.IsManaged(definition));
             }
             store.Save(settings);
             SetActivity(found == 0 ? "Scan complete. No new applications found." :
@@ -703,7 +703,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     if (processes.Launch(definition, setting.Path, out error))
                     {
                         launched++;
-                        Ui(delegate { cards[definition.Key].RefreshView(true); });
+                        Ui(delegate { cards[definition.Key].RefreshView(true, processes.IsManaged(definition)); });
                         if (setting.DelaySeconds > 0) Thread.Sleep(setting.DelaySeconds * 1000);
                     }
                     else
@@ -753,7 +753,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private void RefreshStatuses()
         {
             foreach (AppDefinition definition in definitions)
-                cards[definition.Key].RefreshView(processes.IsRunning(definition));
+                cards[definition.Key].RefreshView(processes.IsRunning(definition), processes.IsManaged(definition));
             UpdateStackStatus();
             HandleAutoMode();
         }
@@ -810,7 +810,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     if (processes.Launch(definition, setting.Path, out error))
                     {
                         if (!wasRunning) launched++;
-                        Ui(delegate { cards[definition.Key].RefreshView(true); });
+                        Ui(delegate { cards[definition.Key].RefreshView(true, processes.IsManaged(definition)); });
                         if (!wasRunning && setting.DelaySeconds > 0) Thread.Sleep(setting.DelaySeconds * 1000);
                     }
                     else
@@ -1137,13 +1137,13 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             stateLabel = new Label();
             stateLabel.Font = new Font("Segoe UI Semibold", 7F, FontStyle.Bold);
             stateLabel.Location = new Point(34, 82);
-            stateLabel.Size = new Size(46, 17);
+            stateLabel.Size = new Size(76, 17);
             Controls.Add(stateLabel);
 
-            RefreshView(false);
+            RefreshView(false, false);
         }
 
-        public void RefreshView(bool running)
+        public void RefreshView(bool running, bool managed)
         {
             bool exists = previewMode || (!String.IsNullOrWhiteSpace(Setting.Path) && File.Exists(Setting.Path));
             string safePreviewPath = @"C:\Apps\" + Definition.Name.Replace(" ", "") + @"\" + Definition.ProcessName + ".exe";
@@ -1151,9 +1151,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             pathLabel.ForeColor = exists ? Livery.Muted : Livery.Error;
             if (running)
             {
-                stateLabel.Text = "LIVE";
-                stateLabel.ForeColor = Livery.Success;
-                dotLabel.ForeColor = Livery.Success;
+                stateLabel.Text = managed ? "MANAGED" : "EXTERNAL";
+                stateLabel.ForeColor = managed ? Livery.Success : Livery.Blue;
+                dotLabel.ForeColor = stateLabel.ForeColor;
             }
             else if (exists)
             {

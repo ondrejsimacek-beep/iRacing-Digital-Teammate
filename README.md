@@ -24,6 +24,7 @@ came from this repository's Releases page before running it.
 - Automatic detection of iRacing and common companion applications.
 - Sequential launch with an individual delay for every application.
 - Live running-state indicators and configurable executable paths.
+- Running cards show whether Teammate manages the process or it was started externally.
 - Safe **Stop launched** action limited to process trees started by Teammate.
 - Hide/show application cards without deleting their configuration.
 - Optional **Start with Windows** toggle using the current user's standard Startup folder.
@@ -68,6 +69,7 @@ apps; they start when the simulator session process appears. A three-second conf
 window prevents a brief process transition from triggering premature cleanup.
 
 Closing Teammate itself does not close racing software.
+Crew Chief restarts marked by its updater remain managed when Teammate launched the original process.
 Use **Exit** from the notification-area icon menu when you want to stop Teammate
 completely. Double-click the icon to restore the main window.
 

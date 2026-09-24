@@ -4,6 +4,13 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.4.1] - 2026-09-24
+
+### Fixed
+
+- Keep Crew Chief attached to a Teammate-managed session when its updater restarts it.
+- Show whether a running application is managed by Teammate or was started externally.
+
 ## [2.4.0] - 2026-09-09
 
 ### Added
