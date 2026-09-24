@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Net;
 using System.Reflection;
 using System.Security;
@@ -351,6 +352,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private readonly Dictionary<string, List<Process>> tracked = new Dictionary<string, List<Process>>();
         private readonly HashSet<string> elevatedTaskLaunches = new HashSet<string>();
         private readonly object sync = new object();
+        private Tuple<string, DateTime> crewChiefLaunch;
 
         public static bool IsIRacingSessionRunning()
         {
@@ -381,17 +383,26 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 List<Process> processes;
                 if (tracked.TryGetValue(definition.Key, out processes))
                 {
-                    for (int i = processes.Count - 1; i >= 0; i--)
+                    // Keep an exited Crew Chief handle until cleanup: its updater can restart it.
+                    if (definition.Key == "crewchief")
                     {
-                        try
-                        {
-                            if (!processes[i].HasExited) return true;
-                        }
-                        catch { }
-                        try { processes[i].Dispose(); } catch { }
-                        processes.RemoveAt(i);
+                        foreach (Process process in processes)
+                            try { if (!process.HasExited) return true; } catch { }
                     }
-                    tracked.Remove(definition.Key);
+                    else
+                    {
+                        for (int i = processes.Count - 1; i >= 0; i--)
+                        {
+                            try
+                            {
+                                if (!processes[i].HasExited) return true;
+                            }
+                            catch { }
+                            try { processes[i].Dispose(); } catch { }
+                            processes.RemoveAt(i);
+                        }
+                        tracked.Remove(definition.Key);
+                    }
                 }
             }
             try
@@ -402,6 +413,19 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 return running;
             }
             catch { return false; }
+        }
+
+        public bool IsManaged(AppDefinition definition)
+        {
+            TrackCrewChiefRestart(definition);
+            lock (sync)
+            {
+                List<Process> processes;
+                if (!tracked.TryGetValue(definition.Key, out processes)) return false;
+                foreach (Process process in processes)
+                    try { if (!process.HasExited) return true; } catch { }
+                return false;
+            }
         }
 
         public bool Launch(AppDefinition definition, string path, out string error)
@@ -415,6 +439,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             }
             try
             {
+                DateTime launchStartedUtc = DateTime.UtcNow;
                 HashSet<int> existingProcessIds = SnapshotProcessIds(definition.ProcessName);
                 if (definition.RequiresElevationBridge)
                 {
@@ -461,7 +486,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     stableScans = launchedProcesses.Count > 1 && !added ? stableScans + 1 : 0;
                 }
 
-                lock (sync) tracked[definition.Key] = launchedProcesses;
+                lock (sync)
+                {
+                    tracked[definition.Key] = launchedProcesses;
+                    if (definition.Key == "crewchief")
+                        crewChiefLaunch = Tuple.Create(Path.GetFullPath(path), launchStartedUtc);
+                }
                 return true;
             }
             catch (Exception ex)
@@ -473,6 +503,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
         public bool StopTracked(AppDefinition definition)
         {
+            TrackCrewChiefRestart(definition);
             List<Process> launchedProcesses = null;
             bool elevatedTaskLaunch = false;
             lock (sync)
@@ -483,6 +514,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     tracked.Remove(definition.Key);
                 }
                 elevatedTaskLaunch = elevatedTaskLaunches.Remove(definition.Key);
+                if (definition.Key == "crewchief") crewChiefLaunch = null;
             }
             if (launchedProcesses == null && !elevatedTaskLaunch) return false;
 
@@ -525,6 +557,58 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 try { process.Dispose(); } catch { }
             }
             return foundRunningProcess;
+        }
+
+        private void TrackCrewChiefRestart(AppDefinition definition)
+        {
+            if (definition.Key != "crewchief") return;
+            Tuple<string, DateTime> launch;
+            lock (sync)
+            {
+                List<Process> processes;
+                if (crewChiefLaunch == null || !tracked.TryGetValue(definition.Key, out processes)) return;
+                foreach (Process process in processes)
+                    try { if (!process.HasExited) return; } catch { }
+                launch = crewChiefLaunch;
+            }
+
+            try
+            {
+                using (ManagementObjectSearcher search = new ManagementObjectSearcher(
+                    "SELECT ProcessId, ExecutablePath, CommandLine FROM Win32_Process WHERE Name='" +
+                    definition.ProcessName + ".exe'"))
+                using (ManagementObjectCollection matches = search.Get())
+                {
+                    foreach (ManagementObject match in matches)
+                    using (match)
+                    {
+                        string path = Convert.ToString(match["ExecutablePath"]);
+                        string commandLine = Convert.ToString(match["CommandLine"]);
+                        if (!String.Equals(path, launch.Item1, StringComparison.OrdinalIgnoreCase) ||
+                            !System.Text.RegularExpressions.Regex.IsMatch(commandLine ?? "",
+                                @"(?:^|\s)-app_restart(?:\s|$)",
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+
+                        Process replacement = Process.GetProcessById(Convert.ToInt32(match["ProcessId"]));
+                        if (replacement.StartTime.ToUniversalTime() < launch.Item2)
+                        {
+                            replacement.Dispose();
+                            continue;
+                        }
+                        lock (sync)
+                        {
+                            List<Process> processes;
+                            if (crewChiefLaunch == launch && tracked.TryGetValue(definition.Key, out processes))
+                            {
+                                processes.Add(replacement);
+                                return;
+                            }
+                        }
+                        replacement.Dispose();
+                    }
+                }
+            }
+            catch { }
         }
 
         private static HashSet<int> SnapshotProcessIds(string processName)
