@@ -32,6 +32,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
     {
         private readonly List<AppDefinition> definitions;
         private readonly SettingsStore store;
+        private readonly SessionJournal journal;
         private readonly LauncherSettings settings;
         private readonly ProcessController processes;
         private readonly Dictionary<string, AppCard> cards;
@@ -68,7 +69,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             definitions = AppCatalog.Create();
             store = new SettingsStore();
             settings = store.Load(definitions);
+            journal = new SessionJournal(store.DirectoryPath);
             processes = new ProcessController();
+            processes.RestartAdopted += delegate(AppDefinition definition)
+            {
+                journal.Record(definition.Name + " restarted after an update; replacement is managed.");
+            };
             cards = new Dictionary<string, AppCard>();
 
             Text = "iRacing Digital Teammate — Digital Downforce Sim Racing";
@@ -212,6 +218,21 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             activityLabel.Size = new Size(770, 20);
             activityLabel.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
             activity.Controls.Add(activityLabel);
+
+            LinkLabel sessionLogLink = new LinkLabel();
+            sessionLogLink.Text = "LAST SESSION";
+            sessionLogLink.LinkColor = Livery.Blue;
+            sessionLogLink.ActiveLinkColor = Livery.GoldBright;
+            sessionLogLink.VisitedLinkColor = Livery.Blue;
+            sessionLogLink.TextAlign = ContentAlignment.MiddleCenter;
+            sessionLogLink.Dock = DockStyle.Right;
+            sessionLogLink.Width = 132;
+            sessionLogLink.LinkClicked += delegate { ShowSessionLog(); };
+            activity.Controls.Add(sessionLogLink);
+            activity.Resize += delegate
+            {
+                activityLabel.Width = Math.Max(100, sessionLogLink.Left - activityLabel.Left - 12);
+            };
 
             refreshTimer = new System.Windows.Forms.Timer();
             refreshTimer.Interval = 1200;
@@ -419,6 +440,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             }
             else
             {
+                if (sessionWasRunning)
+                    journal.Record("Auto Mode disabled during the session; automatic cleanup will not run.");
                 SetActivity("Auto Mode disabled. Running applications were left untouched.", Livery.Muted);
             }
             RefreshAutoModeButton();
@@ -783,6 +806,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private void StartAutoStack()
         {
             if (operationRunning) return;
+            journal.Begin();
+            journal.Record("iRacing session detected; Auto Mode is starting selected apps.");
             operationRunning = true;
             SetButtonsEnabled(false);
             SetActivity("iRacing session detected — starting companion applications…", Livery.GoldBright);
@@ -797,28 +822,42 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
                 foreach (AppDefinition definition in selected)
                 {
-                    if (!ProcessController.IsIRacingSessionRunning()) break;
+                    if (!ProcessController.IsIRacingSessionRunning())
+                    {
+                        journal.Record("Session ended during startup; remaining apps were not started.");
+                        break;
+                    }
                     AppSetting setting = FindSetting(definition.Key);
                     if (String.IsNullOrWhiteSpace(setting.Path) || !File.Exists(setting.Path))
                     {
+                        journal.Record("Skipped " + definition.Name + ": executable is not configured or missing.");
                         Ui(delegate { SetActivity("Auto Mode skipped " + definition.Name + " — executable not configured.", Livery.Error); });
                         continue;
                     }
 
                     bool wasRunning = processes.IsRunning(definition);
+                    bool wasManaged = wasRunning && processes.IsManaged(definition);
                     string error;
                     if (processes.Launch(definition, setting.Path, out error))
                     {
                         if (!wasRunning) launched++;
-                        Ui(delegate { cards[definition.Key].RefreshView(true, processes.IsManaged(definition)); });
+                        bool managedNow = processes.IsManaged(definition);
+                        journal.Record(wasRunning ?
+                            definition.Name + (wasManaged ? " was already managed; no new launch." :
+                                " was already running outside Teammate; left untouched.") :
+                            "Launch requested for " + definition.Name + (managedNow ?
+                                "; Teammate manages this instance." : "; managed process not confirmed yet."));
+                        Ui(delegate { cards[definition.Key].RefreshView(true, managedNow); });
                         if (!wasRunning && setting.DelaySeconds > 0) Thread.Sleep(setting.DelaySeconds * 1000);
                     }
                     else
                     {
+                        journal.Record("Could not start " + definition.Name + ": " + error);
                         Ui(delegate { SetActivity("Auto Mode could not start " + definition.Name + ": " + error, Livery.Error); });
                     }
                 }
 
+                journal.Record("Startup complete: " + launched + " app(s) launched for this session.");
                 Ui(delegate
                 {
                     SetActivity("Auto Mode active — " + launched + " companion application" +
@@ -836,6 +875,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         {
             if (autoTransitionRunning) return;
             autoTransitionRunning = true;
+            journal.Record("iRacing session ended; waiting 3 seconds to confirm shutdown.");
             SetActivity("iRacing session ended — confirming shutdown…", Livery.GoldBright);
 
             Thread worker = new Thread(delegate()
@@ -843,6 +883,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 Thread.Sleep(3000);
                 if (ProcessController.IsIRacingSessionRunning())
                 {
+                    journal.Record("Shutdown cancelled: iRacing session resumed.");
                     autoTransitionRunning = false;
                     return;
                 }
@@ -852,6 +893,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     Thread.Sleep(200);
                     if (ProcessController.IsIRacingSessionRunning())
                     {
+                        journal.Record("Shutdown cancelled: iRacing session resumed.");
                         autoTransitionRunning = false;
                         return;
                     }
@@ -862,9 +904,27 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 for (int i = definitions.Count - 1; i >= 0; i--)
                 {
                     AppDefinition definition = definitions[i];
-                    if (definition.Key != "iracing" && processes.StopTracked(definition)) stopped++;
+                    if (definition.Key == "iracing") continue;
+                    bool selected = FindSetting(definition.Key).Enabled;
+                    bool wasManaged = processes.IsManaged(definition);
+                    bool wasRunning = processes.IsRunning(definition);
+                    bool stopRequested = processes.StopTracked(definition);
+                    bool stillRunning = processes.IsRunning(definition);
+                    if (stopRequested) stopped++;
+                    if (!selected && !wasManaged) continue;
+                    if (stopRequested)
+                        journal.Record(stillRunning ?
+                            "Stop requested for " + definition.Name + "; a process is still running (possibly external)." :
+                            "Stopped " + definition.Name + " (Teammate-managed).");
+                    else if (wasRunning && !wasManaged)
+                        journal.Record("Left " + definition.Name + " running: it was started outside Teammate.");
+                    else if (stillRunning)
+                        journal.Record("Could not stop " + definition.Name + "; process is still running.");
+                    else
+                        journal.Record(definition.Name + " was already closed.");
                 }
 
+                journal.Record("Session cleanup complete: " + stopped + " managed app(s) stopped.");
                 Ui(delegate
                 {
                     SetActivity("Session cleanup complete — " + stopped + " companion application" +
@@ -912,6 +972,33 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         {
             activityLabel.Text = text;
             activityLabel.ForeColor = color;
+        }
+
+        private void ShowSessionLog()
+        {
+            using (Form window = new Form())
+            {
+                window.Text = "Last iRacing session - iRacing Digital Teammate";
+                window.Size = new Size(720, 500);
+                window.MinimumSize = new Size(500, 320);
+                window.StartPosition = FormStartPosition.CenterParent;
+                window.BackColor = Livery.Background;
+                window.ForeColor = Livery.Text;
+                using (TextBox log = new TextBox())
+                {
+                    log.Multiline = true;
+                    log.ReadOnly = true;
+                    log.ScrollBars = ScrollBars.Both;
+                    log.WordWrap = false;
+                    log.Dock = DockStyle.Fill;
+                    log.BackColor = Livery.Surface;
+                    log.ForeColor = Livery.Text;
+                    log.Font = new Font("Consolas", 10F);
+                    log.Text = journal.Read();
+                    window.Controls.Add(log);
+                    window.ShowDialog(this);
+                }
+            }
         }
 
         private void Ui(MethodInvoker action)
@@ -964,6 +1051,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             };
             FormClosed += delegate
             {
+                if (sessionWasRunning && settings.AutoModeEnabled)
+                    journal.Record("Teammate exited during the session; automatic cleanup will not run.");
                 automaticUpdateTimer.Stop();
                 automaticUpdateTimer.Dispose();
                 if (trayIcon != null)

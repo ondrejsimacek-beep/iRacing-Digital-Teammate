@@ -32,6 +32,9 @@ came from this repository's Releases page before running it.
   close button keep Teammate available beside the clock without occupying the taskbar.
 - **Auto Mode** starts selected companion apps when an iRacing simulator session
   begins and stops only Teammate-launched apps after the session ends.
+- **Last session** opens a copyable Auto Mode report showing launches, skipped apps,
+  externally running apps, updater restarts, and cleanup results. The latest report
+  is saved locally as `last-session.txt` beside the settings file.
 - A silent update check runs after startup and while Teammate remains active, at most
   once every 24 hours, and announces new versions in the notification area. Downloads
   and installation still require confirmation and use SHA-256 verification before an

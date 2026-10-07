@@ -4,6 +4,14 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.5.0] - 2026-10-07
+
+### Added
+
+- Added a copyable Last Session report for Auto Mode launches, skipped or externally
+  running apps, Crew Chief updater restarts, and session cleanup results.
+- Saved the latest session report locally beside the application settings.
+
 ## [2.4.1] - 2026-09-24
 
 ### Fixed

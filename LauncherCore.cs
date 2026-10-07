@@ -347,12 +347,75 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         }
     }
 
+    public class SessionJournal
+    {
+        private readonly string filePath;
+        private readonly object sync = new object();
+        private string writeError;
+        private bool active;
+
+        public SessionJournal(string directory)
+        {
+            filePath = Path.Combine(directory, "last-session.txt");
+        }
+
+        public void Begin()
+        {
+            lock (sync)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                    File.WriteAllText(filePath, "iRacing Digital Teammate - last Auto Mode session" +
+                        Environment.NewLine + "Started: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") +
+                        Environment.NewLine + Environment.NewLine);
+                    writeError = null;
+                    active = true;
+                }
+                catch (Exception ex)
+                {
+                    active = false;
+                    writeError = ex.Message;
+                }
+            }
+        }
+
+        public void Record(string message)
+        {
+            lock (sync)
+            {
+                if (!active) return;
+                try
+                {
+                    File.AppendAllText(filePath, "[" + DateTime.Now.ToString("HH:mm:ss") + "] " +
+                        message + Environment.NewLine);
+                }
+                catch (Exception ex) { writeError = ex.Message; }
+            }
+        }
+
+        public string Read()
+        {
+            lock (sync)
+            {
+                if (writeError != null) return "Session log could not be saved: " + writeError;
+                try
+                {
+                    return File.Exists(filePath) ? File.ReadAllText(filePath) :
+                        "No Auto Mode session has been recorded yet.";
+                }
+                catch (Exception ex) { return "Session log could not be opened: " + ex.Message; }
+            }
+        }
+    }
+
     public class ProcessController
     {
         private readonly Dictionary<string, List<Process>> tracked = new Dictionary<string, List<Process>>();
         private readonly HashSet<string> elevatedTaskLaunches = new HashSet<string>();
         private readonly object sync = new object();
         private Tuple<string, DateTime> crewChiefLaunch;
+        public event Action<AppDefinition> RestartAdopted;
 
         public static bool IsIRacingSessionRunning()
         {
@@ -595,14 +658,21 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                             replacement.Dispose();
                             continue;
                         }
+                        bool adopted = false;
                         lock (sync)
                         {
                             List<Process> processes;
                             if (crewChiefLaunch == launch && tracked.TryGetValue(definition.Key, out processes))
                             {
                                 processes.Add(replacement);
-                                return;
+                                adopted = true;
                             }
+                        }
+                        if (adopted)
+                        {
+                            Action<AppDefinition> handler = RestartAdopted;
+                            if (handler != null) handler(definition);
+                            return;
                         }
                         replacement.Dispose();
                     }
