@@ -17,6 +17,8 @@ internal static class ProcessLifecycleSmoke
             ProcessName = "FakeCrewChief"
         };
         ProcessController controller = new ProcessController();
+        int restartsAdopted = 0;
+        controller.RestartAdopted += delegate { restartsAdopted++; };
         string error;
         if (!controller.Launch(definition, executable, out error)) throw new Exception(error);
         File.WriteAllText(signal, "restart");
@@ -33,6 +35,7 @@ internal static class ProcessLifecycleSmoke
             }
         }
         if (!adopted) throw new Exception("Crew Chief restart was not adopted.");
+        if (restartsAdopted != 1) throw new Exception("Crew Chief restart was not reported once.");
         if (!controller.StopTracked(definition)) throw new Exception("Restarted Crew Chief was not stopped.");
         Thread.Sleep(500);
         if (HasRestartedProcess()) throw new Exception("Restarted Crew Chief is still running.");
@@ -49,7 +52,13 @@ internal static class ProcessLifecycleSmoke
             external.Kill();
             external.WaitForExit();
         }
-        Console.WriteLine("PASS: updater restart stopped; pre-existing process preserved.");
+        SessionJournal journal = new SessionJournal(Path.Combine(Path.GetDirectoryName(executable), "session-journal-smoke"));
+        journal.Begin();
+        journal.Record("Started Crew Chief");
+        if (!journal.Read().Contains("Started Crew Chief")) throw new Exception("Session event was not saved.");
+        journal.Begin();
+        if (journal.Read().Contains("Started Crew Chief")) throw new Exception("Last session was not replaced.");
+        Console.WriteLine("PASS: updater restart tracked; pre-existing process preserved; session journal retained only the last session.");
     }
 
     private static bool HasRestartedProcess()
