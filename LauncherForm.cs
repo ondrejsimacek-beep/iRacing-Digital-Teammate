@@ -36,6 +36,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private readonly LauncherSettings settings;
         private readonly ProcessController processes;
         private readonly Dictionary<string, AppCard> cards;
+        private readonly HashSet<string> externalCleanupForSession = new HashSet<string>();
         private readonly FlowLayoutPanel cardsFlow;
         private readonly Label activityLabel;
         private readonly Label stackStatusLabel;
@@ -185,6 +186,22 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 AppSetting setting = FindSetting(definition.Key);
                 AppCard card = new AppCard(definition, setting, previewMode);
                 card.ToggleChanged += delegate { store.Save(settings); UpdateStackStatus(); };
+                card.ExternalStopChanged += delegate(object sender, EventArgs e)
+                {
+                    AppCard changed = (AppCard)sender;
+                    if (changed.Setting.StopExternalAfterSession && changed.Definition.Key == "simconnectmanager")
+                    {
+                        string error;
+                        if (!ElevatedTaskBridge.EnsureExternalStopConfigured(out error))
+                        {
+                            changed.SetExternalStop(false);
+                            MessageBox.Show(this, "SimConnect cleanup needs one-time Windows approval.\n\n" + error,
+                                "iRacing Digital Teammate", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                    }
+                    store.Save(settings);
+                };
                 card.BrowseRequested += delegate(object sender, EventArgs e) { BrowseFor((AppCard)sender); };
                 card.HideRequested += delegate(object sender, EventArgs e)
                 {
@@ -327,7 +344,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             status.Controls.Add(separator);
 
             Label statusHint = new Label();
-            statusHint.Text = "Only software started for this session is stopped automatically.";
+            statusHint.Text = "Only session-started apps stop automatically, unless CLOSE EXTERNAL is enabled.";
             statusHint.ForeColor = Livery.Muted;
             statusHint.Font = new Font("Segoe UI", 7.6F);
             statusHint.Location = new Point(14, 164);
@@ -806,6 +823,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private void StartAutoStack()
         {
             if (operationRunning) return;
+            externalCleanupForSession.Clear();
             journal.Begin();
             journal.Record("iRacing session detected; Auto Mode is starting selected apps.");
             operationRunning = true;
@@ -819,6 +837,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 {
                     return definition.Key != "iracing" && FindSetting(definition.Key).Enabled;
                 }).ToList();
+                foreach (AppDefinition definition in selected)
+                    if (FindSetting(definition.Key).StopExternalAfterSession)
+                        externalCleanupForSession.Add(definition.Key);
 
                 foreach (AppDefinition definition in selected)
                 {
@@ -844,7 +865,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                         bool managedNow = processes.IsManaged(definition);
                         journal.Record(wasRunning ?
                             definition.Name + (wasManaged ? " was already managed; no new launch." :
-                                " was already running outside Teammate; left untouched.") :
+                                (externalCleanupForSession.Contains(definition.Key) ?
+                                    " was already running outside Teammate; opted into session cleanup." :
+                                    " was already running outside Teammate; left untouched.")) :
                             "Launch requested for " + definition.Name + (managedNow ?
                                 "; Teammate manages this instance." : "; managed process not confirmed yet."));
                         Ui(delegate { cards[definition.Key].RefreshView(true, managedNow); });
@@ -911,6 +934,18 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     bool stopRequested = processes.StopTracked(definition);
                     bool stillRunning = processes.IsRunning(definition);
                     if (stopRequested) stopped++;
+                    if (externalCleanupForSession.Contains(definition.Key) &&
+                        FindSetting(definition.Key).StopExternalAfterSession && stillRunning)
+                    {
+                        string error;
+                        if (ProcessController.StopExternalAfterSession(definition, out error))
+                        {
+                            if (!stopRequested) stopped++;
+                            journal.Record("Closed " + definition.Name + " under explicit external-cleanup opt-in.");
+                        }
+                        else journal.Record("Could not close " + definition.Name + " under opt-in: " + error);
+                        continue;
+                    }
                     if (!selected && !wasManaged) continue;
                     if (stopRequested)
                         journal.Record(stillRunning ?
@@ -924,7 +959,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                         journal.Record(definition.Name + " was already closed.");
                 }
 
-                journal.Record("Session cleanup complete: " + stopped + " managed app(s) stopped.");
+                journal.Record("Session cleanup complete: " + stopped + " companion app(s) stopped.");
                 Ui(delegate
                 {
                     SetActivity("Session cleanup complete — " + stopped + " companion application" +
@@ -1115,6 +1150,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public readonly AppDefinition Definition;
         public readonly AppSetting Setting;
         private readonly CheckBox enabledCheck;
+        private readonly CheckBox externalStopCheck;
         private readonly Label pathLabel;
         private readonly Label stateLabel;
         private readonly Label dotLabel;
@@ -1123,6 +1159,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private readonly bool previewMode;
 
         public event EventHandler ToggleChanged;
+        public event EventHandler ExternalStopChanged;
         public event EventHandler BrowseRequested;
         public event EventHandler HideRequested;
 
@@ -1202,6 +1239,29 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             };
             Controls.Add(enabledCheck);
 
+            if (definition.Key == "irdashies" || definition.Key == "simconnectmanager")
+            {
+                externalStopCheck = new CheckBox();
+                externalStopCheck.Text = "CLOSE EXTERNAL";
+                externalStopCheck.Checked = setting.StopExternalAfterSession;
+                externalStopCheck.ForeColor = Livery.Silver;
+                externalStopCheck.BackColor = Livery.Surface;
+                externalStopCheck.FlatStyle = FlatStyle.Flat;
+                externalStopCheck.Font = new Font("Segoe UI Semibold", 7F, FontStyle.Bold);
+                externalStopCheck.Size = new Size(150, 20);
+                externalStopCheck.Location = new Point(Width - 166, 42);
+                externalStopCheck.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                externalStopCheck.AccessibleDescription = "Also close this app after the iRacing session when it was already running before the session. Closes every matching instance.";
+                new ToolTip().SetToolTip(externalStopCheck,
+                    "After a session, close all instances of this app, including ones started outside Teammate.");
+                externalStopCheck.CheckedChanged += delegate
+                {
+                    Setting.StopExternalAfterSession = externalStopCheck.Checked;
+                    if (ExternalStopChanged != null) ExternalStopChanged(this, EventArgs.Empty);
+                };
+                Controls.Add(externalStopCheck);
+            }
+
             LiveryButton browse = new LiveryButton("BROWSE", Livery.SurfaceLight, Livery.Silver, 76);
             browse.Height = 28;
             browse.Location = new Point(Width - 92, 67);
@@ -1230,6 +1290,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             Controls.Add(stateLabel);
 
             RefreshView(false, false);
+        }
+
+        public void SetExternalStop(bool enabled)
+        {
+            if (externalStopCheck != null) externalStopCheck.Checked = enabled;
         }
 
         public void RefreshView(bool running, bool managed)

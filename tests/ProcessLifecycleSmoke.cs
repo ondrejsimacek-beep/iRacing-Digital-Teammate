@@ -24,7 +24,7 @@ internal static class ProcessLifecycleSmoke
         File.WriteAllText(signal, "restart");
 
         bool adopted = false;
-        for (int i = 0; i < 50; i++)
+        for (int i = 0; i < 100; i++)
         {
             Thread.Sleep(200);
             controller.IsRunning(definition);
@@ -58,7 +58,29 @@ internal static class ProcessLifecycleSmoke
         if (!journal.Read().Contains("Started Crew Chief")) throw new Exception("Session event was not saved.");
         journal.Begin();
         if (journal.Read().Contains("Started Crew Chief")) throw new Exception("Last session was not replaced.");
-        Console.WriteLine("PASS: updater restart tracked; pre-existing process preserved; session journal retained only the last session.");
+
+        if (new AppSetting().StopExternalAfterSession) throw new Exception("External cleanup must default to off.");
+        AppDefinition handoff = new AppDefinition { Key = "handoff", ProcessName = "FakeExternal" };
+        ProcessController handoffController = new ProcessController();
+        if (!handoffController.Launch(handoff, Path.GetFullPath(args[2]), out error)) throw new Exception(error);
+        if (!handoffController.IsManaged(handoff)) throw new Exception("Differently named handoff target was not tracked.");
+        if (!handoffController.StopTracked(handoff)) throw new Exception("Differently named handoff target was not stopped.");
+        Thread.Sleep(300);
+        if (Process.GetProcessesByName("FakeExternal").Length != 0)
+            throw new Exception("Differently named handoff target is still running.");
+
+        using (Process external = Process.Start(Path.GetFullPath(args[1]), "-app_restart"))
+        {
+            Thread.Sleep(300);
+            AppDefinition unrelated = new AppDefinition { Key = "garage61", ProcessName = "FakeExternal" };
+            if (ProcessController.StopExternalAfterSession(unrelated, out error))
+                throw new Exception("External cleanup accepted an unrelated app.");
+            if (external.HasExited) throw new Exception("Unrelated external app was stopped.");
+            AppDefinition optedIn = new AppDefinition { Key = "irdashies", ProcessName = "FakeExternal" };
+            if (!ProcessController.StopExternalAfterSession(optedIn, out error)) throw new Exception(error);
+            if (!external.WaitForExit(5000)) throw new Exception("Opted-in external app was not stopped.");
+        }
+        Console.WriteLine("PASS: restart ownership, handoff cleanup, external opt-in safety and last-session journal.");
     }
 
     private static bool HasRestartedProcess()

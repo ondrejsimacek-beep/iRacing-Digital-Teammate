@@ -4,6 +4,20 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.5.1] - 2026-10-20
+
+### Added
+
+- Added an explicit, default-off Close external option for irDashies and SimConnect
+  Manager, so users can choose to close updater-started copies after a session.
+- Added a restricted one-time elevated cleanup task for SimConnect Manager when
+  its updater leaves the app running as administrator.
+
+### Fixed
+
+- Track same-installation child processes when a launcher exits after handing off
+  to an executable with a different name, so session cleanup can stop them.
+
 ## [2.5.0] - 2026-10-07
 
 ### Added
