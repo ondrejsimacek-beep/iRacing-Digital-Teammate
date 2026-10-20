@@ -97,6 +97,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     Path.Combine(local, "Programs", "Garage61", "garage61-launcher.exe"),
                     Path.Combine(roaming, "Garage61", "garage61-launcher.exe"),
                     Path.Combine(roaming, "garage61-install", "garage61-launcher.exe")),
+                Def("ddscoach", "DDS Telemetry Coach", "COACHING", "DDS Telemetry Coach", "DC", true,
+                    Path.Combine(local, "Programs", "DDS Telemetry Coach", "DDS Telemetry Coach.exe")),
                 Def("irdashies", "irDashies", "OPEN OVERLAYS", "irdashies", "iD", false,
                     Path.Combine(local, "irdashies", "irdashies.exe"),
                     Path.Combine(local, "Programs", "irdashies", "irdashies.exe")),
@@ -190,6 +192,21 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 {
                     string expanded = Environment.ExpandEnvironmentVariables(candidate);
                     if (File.Exists(expanded)) return Path.GetFullPath(expanded);
+                }
+                catch { }
+            }
+            if (definition.Key == "ddscoach")
+            {
+                try
+                {
+                    foreach (Process process in Process.GetProcessesByName(definition.ProcessName))
+                    using (process)
+                        try
+                        {
+                            string runningPath = process.MainModule.FileName;
+                            if (File.Exists(runningPath)) return Path.GetFullPath(runningPath);
+                        }
+                        catch { }
                 }
                 catch { }
             }
