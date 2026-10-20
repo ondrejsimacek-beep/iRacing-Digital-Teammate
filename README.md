@@ -50,12 +50,16 @@ came from this repository's Releases page before running it.
 
 ## Supported software
 
-iRacing, Crew Chief V4, Trading Paints, Garage61, irDashies, Edge Overlays,
+iRacing, Crew Chief V4, Trading Paints, Garage61, DDS Telemetry Coach, irDashies, Edge Overlays,
 GO Fast (GO Setups), SimHub, iOverlay, Racelab, Elgato Stream Deck, CONSPIT
 Launcher, SimConnect Manager, MOZA Pit House, iRSidekick, VRS Telemetry Logger,
 Kapps, Joel Real Timing, OpenKneeboard, and Marvin's AIRA.
 
 Applications that are not detected automatically can be configured with **Browse**.
+DDS Telemetry Coach is detected in its standard per-user installation folder;
+running portable copies are also detected. Other portable copies can be selected
+with **Browse**. Coach remains a separate app and
+uses the same launch and process-ownership rules as the other companions.
 
 CONSPIT Link 2.0 requires administrator rights. On its first Teammate-managed start,
 Windows asks once for permission to create a restricted Task Scheduler bridge. Later

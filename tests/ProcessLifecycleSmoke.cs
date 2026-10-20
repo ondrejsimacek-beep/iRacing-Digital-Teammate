@@ -8,6 +8,14 @@ internal static class ProcessLifecycleSmoke
 {
     private static void Main(string[] args)
     {
+        AppDefinition coach = AppCatalog.Create().Find(x => x.Key == "ddscoach");
+        string coachPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs", "DDS Telemetry Coach", "DDS Telemetry Coach.exe");
+        if (coach == null || coach.Name != "DDS Telemetry Coach" || coach.ProcessName != "DDS Telemetry Coach" ||
+            !coach.EnabledByDefault || coach.CandidatePaths.Length != 1 || coach.CandidatePaths[0] != coachPath)
+            throw new Exception("DDS Coach catalog entry does not match its installer and process name.");
+        if (File.Exists(coachPath) && AppCatalog.DetectPath(coach) != coachPath)
+            throw new Exception("Installed DDS Coach was not detected.");
         string executable = Path.GetFullPath(args[0]);
         string signal = Path.Combine(Path.GetDirectoryName(executable), "restart.flag");
         if (File.Exists(signal)) File.Delete(signal);
@@ -72,6 +80,12 @@ internal static class ProcessLifecycleSmoke
         using (Process external = Process.Start(Path.GetFullPath(args[1]), "-app_restart"))
         {
             Thread.Sleep(300);
+            AppDefinition portableCoach = new AppDefinition
+            {
+                Key = "ddscoach", ProcessName = "FakeExternal", CandidatePaths = new string[0]
+            };
+            if (AppCatalog.DetectPath(portableCoach) != Path.GetFullPath(args[1]))
+                throw new Exception("Running portable DDS Coach was not detected.");
             AppDefinition unrelated = new AppDefinition { Key = "garage61", ProcessName = "FakeExternal" };
             if (ProcessController.StopExternalAfterSession(unrelated, out error))
                 throw new Exception("External cleanup accepted an unrelated app.");

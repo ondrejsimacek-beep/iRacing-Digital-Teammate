@@ -4,6 +4,14 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.5.2] - 2026-10-20
+
+### Added
+
+- Added DDS Telemetry Coach to the race stack, enabled by default. Standard per-user
+  installations and already-running portable copies are detected automatically;
+  other portable copies can be selected with Browse.
+
 ## [2.5.1] - 2026-10-20
 
 ### Added
