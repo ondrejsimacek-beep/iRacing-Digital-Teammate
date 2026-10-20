@@ -46,6 +46,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public bool Enabled { get; set; }
         public int DelaySeconds { get; set; }
         public bool Hidden { get; set; }
+        public bool StopExternalAfterSession { get; set; }
 
         public AppSetting()
         {
@@ -54,6 +55,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             Enabled = true;
             DelaySeconds = 2;
             Hidden = false;
+            StopExternalAfterSession = false;
         }
     }
 
@@ -546,6 +548,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 {
                     Thread.Sleep(200);
                     bool added = AddNewProcesses(definition.ProcessName, existingProcessIds, launchedProcesses);
+                    if (definition.Key != "crewchief")
+                        added = AddChildProcesses(launchedProcesses, definition.ProcessName, path, launchStartedUtc) || added;
                     stableScans = launchedProcesses.Count > 1 && !added ? stableScans + 1 : 0;
                 }
 
@@ -620,6 +624,75 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 try { process.Dispose(); } catch { }
             }
             return foundRunningProcess;
+        }
+
+        public static bool StopExternalAfterSession(AppDefinition definition, out string error)
+        {
+            error = "";
+            if (definition.Key != "irdashies" && definition.Key != "simconnectmanager")
+            {
+                error = "External cleanup is not available for this application.";
+                return false;
+            }
+            if (!System.Text.RegularExpressions.Regex.IsMatch(definition.ProcessName ?? "", @"^[A-Za-z0-9_.-]+$"))
+            {
+                error = "Invalid process name.";
+                return false;
+            }
+
+            try
+            {
+                for (int attempt = 0; attempt < 2; attempt++)
+                {
+                    if (!IsProcessNameRunning(definition.ProcessName)) return true;
+                    string taskkillError;
+                    int result = RunTaskkill(definition.ProcessName, out taskkillError);
+                    Thread.Sleep(1000);
+                    if (!IsProcessNameRunning(definition.ProcessName)) return true;
+                    if (definition.Key == "simconnectmanager")
+                    {
+                        if (!ElevatedTaskBridge.StopExternalSimConnect(out error)) return false;
+                        Thread.Sleep(1000);
+                    }
+                    else if (result != 0) error = taskkillError;
+                }
+                if (!IsProcessNameRunning(definition.ProcessName)) return true;
+                if (String.IsNullOrWhiteSpace(error)) error = "The application is still running after cleanup.";
+                return false;
+            }
+            catch (Exception ex) { error = ex.Message; return false; }
+        }
+
+        private static bool IsProcessNameRunning(string processName)
+        {
+            Process[] matches = Process.GetProcessesByName(processName);
+            bool running = matches.Length > 0;
+            foreach (Process match in matches) match.Dispose();
+            return running;
+        }
+
+        private static int RunTaskkill(string processName, out string error)
+        {
+            error = "";
+            try
+            {
+                string taskkillPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "taskkill.exe");
+                ProcessStartInfo info = new ProcessStartInfo(taskkillPath, "/IM " + processName + ".exe /T /F");
+                info.UseShellExecute = false;
+                info.CreateNoWindow = true;
+                info.RedirectStandardOutput = true;
+                info.RedirectStandardError = true;
+                using (Process killer = Process.Start(info))
+                {
+                    if (killer == null) { error = "Windows did not start taskkill."; return -1; }
+                    string output = killer.StandardOutput.ReadToEnd();
+                    string failure = killer.StandardError.ReadToEnd();
+                    if (!killer.WaitForExit(5000)) { killer.Kill(); error = "taskkill timed out."; return -1; }
+                    error = String.IsNullOrWhiteSpace(failure) ? output.Trim() : failure.Trim();
+                    return killer.ExitCode;
+                }
+            }
+            catch (Exception ex) { error = ex.Message; return -1; }
         }
 
         private void TrackCrewChiefRestart(AppDefinition definition)
@@ -731,12 +804,64 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             catch { }
             return added;
         }
+
+        private static bool AddChildProcesses(List<Process> launchedProcesses, string expectedProcessName,
+            string launchPath, DateTime launchStartedUtc)
+        {
+            bool added = false;
+            string launchDirectory = Path.GetDirectoryName(Path.GetFullPath(launchPath)) + Path.DirectorySeparatorChar;
+            HashSet<int> trackedIds = new HashSet<int>();
+            foreach (Process process in launchedProcesses)
+                try { trackedIds.Add(process.Id); } catch { }
+
+            foreach (int parentId in trackedIds.ToArray())
+            {
+                try
+                {
+                    using (ManagementObjectSearcher search = new ManagementObjectSearcher(
+                        "SELECT ProcessId FROM Win32_Process WHERE ParentProcessId=" + parentId))
+                    using (ManagementObjectCollection children = search.Get())
+                    {
+                        foreach (ManagementObject child in children)
+                        using (child)
+                        {
+                            int childId = Convert.ToInt32(child["ProcessId"]);
+                            if (trackedIds.Contains(childId)) continue;
+                            Process process = Process.GetProcessById(childId);
+                            try
+                            {
+                                if (String.Equals(process.ProcessName, expectedProcessName,
+                                    StringComparison.OrdinalIgnoreCase)) continue;
+                                if (process.StartTime.ToUniversalTime() < launchStartedUtc) continue;
+                                if (!process.MainModule.FileName.StartsWith(launchDirectory,
+                                    StringComparison.OrdinalIgnoreCase)) continue;
+                                launchedProcesses.Add(process);
+                                trackedIds.Add(childId);
+                                process = null;
+                                added = true;
+                            }
+                            finally { if (process != null) process.Dispose(); }
+                        }
+                    }
+                }
+                catch { }
+            }
+            return added;
+        }
     }
 
     public static class ElevatedTaskBridge
     {
         private const string ConspitKey = "conspit";
         private const string ConspitTaskName = "DDS iRacing Digital Teammate - CONSPIT Launcher";
+        private const string SimConnectKey = "simconnectmanager";
+        private const string SimConnectStopTaskName = "DDS iRacing Digital Teammate - SimConnect cleanup";
+        private const string SimConnectStopArguments = "/IM SimConnectManager.exe /T /F";
+
+        private static string TaskkillPath
+        {
+            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "taskkill.exe"); }
+        }
 
         public static bool Launch(string key, string path, out string error)
         {
@@ -747,35 +872,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 return false;
             }
 
-            if (!IsConfigured(key, path))
-            {
-                try
-                {
-                    ProcessStartInfo setup = new ProcessStartInfo(Assembly.GetExecutingAssembly().Location);
-                    setup.Arguments = "--configure-elevated-task " + key + " \"" + path + "\"";
-                    setup.Verb = "runas";
-                    setup.UseShellExecute = true;
-                    Process process = Process.Start(setup);
-                    if (process == null)
-                    {
-                        error = "Windows did not start the one-time admin bridge setup.";
-                        return false;
-                    }
-                    process.WaitForExit();
-                    int exitCode = process.ExitCode;
-                    process.Dispose();
-                    if (exitCode != 0 || !IsConfigured(key, path))
-                    {
-                        error = "The one-time CONSPIT admin bridge setup was not completed.";
-                        return false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    error = "The one-time CONSPIT admin bridge setup was cancelled or failed: " + ex.Message;
-                    return false;
-                }
-            }
+            if (!EnsureConfigured(key, path, out error)) return false;
 
             int result = RunSchtasks("/Run /TN \"" + TaskName(key) + "\"", out error);
             if (result != 0)
@@ -792,11 +889,55 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             return RunSchtasks("/End /TN \"" + TaskName(key) + "\"", out output) == 0;
         }
 
+        public static bool EnsureExternalStopConfigured(out string error)
+        {
+            return EnsureConfigured(SimConnectKey, TaskkillPath, out error);
+        }
+
+        public static bool StopExternalSimConnect(out string error)
+        {
+            error = "";
+            if (!IsConfigured(SimConnectKey, TaskkillPath))
+            {
+                error = "The one-time SimConnect cleanup approval is missing. Enable CLOSE EXTERNAL again to restore it.";
+                return false;
+            }
+            return RunSchtasks("/Run /TN \"" + SimConnectStopTaskName + "\"", out error) == 0;
+        }
+
+        private static bool EnsureConfigured(string key, string path, out string error)
+        {
+            error = "";
+            if (IsConfigured(key, path)) return true;
+            try
+            {
+                ProcessStartInfo setup = new ProcessStartInfo(Assembly.GetExecutingAssembly().Location);
+                setup.Arguments = "--configure-elevated-task " + key + " \"" + path + "\"";
+                setup.Verb = "runas";
+                setup.UseShellExecute = true;
+                using (Process process = Process.Start(setup))
+                {
+                    if (process == null) { error = "Windows did not start the one-time admin bridge setup."; return false; }
+                    process.WaitForExit();
+                    if (process.ExitCode == 0 && IsConfigured(key, path)) return true;
+                }
+                error = "The one-time admin bridge setup was not completed.";
+            }
+            catch (Exception ex) { error = "The one-time admin bridge setup was cancelled or failed: " + ex.Message; }
+            return false;
+        }
+
         public static int Configure(string key, string path)
         {
-            if (!IsAllowedTarget(key, path)) return 10;
+            bool simConnectStop = String.Equals(key, SimConnectKey, StringComparison.OrdinalIgnoreCase);
+            try
+            {
+                if (simConnectStop ? !String.Equals(Path.GetFullPath(path), TaskkillPath, StringComparison.OrdinalIgnoreCase) :
+                    !IsAllowedTarget(key, path)) return 10;
+            }
+            catch { return 10; }
 
-            string xmlPath = Path.Combine(Path.GetTempPath(), "dds-conspit-task-" + Guid.NewGuid().ToString("N") + ".xml");
+            string xmlPath = Path.Combine(Path.GetTempPath(), "dds-teammate-task-" + Guid.NewGuid().ToString("N") + ".xml");
             try
             {
                 string sid = WindowsIdentity.GetCurrent().User.Value;
@@ -805,7 +946,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 string xml = "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\r\n" +
                     "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">" +
                     "<RegistrationInfo><Author>Digital Downforce Sim Racing</Author>" +
-                    "<Description>Starts and stops CONSPIT Launcher with an iRacing session.</Description></RegistrationInfo>" +
+                    "<Description>Manages one explicitly selected companion app with an iRacing session.</Description></RegistrationInfo>" +
                     "<Principals><Principal id=\"Author\"><UserId>" + SecurityElement.Escape(sid) + "</UserId>" +
                     "<LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals>" +
                     "<Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>" +
@@ -816,6 +957,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     "<RunOnlyIfIdle>false</RunOnlyIfIdle><WakeToRun>false</WakeToRun>" +
                     "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>7</Priority></Settings>" +
                     "<Actions Context=\"Author\"><Exec><Command>" + command + "</Command>" +
+                    (simConnectStop ? "<Arguments>" + SimConnectStopArguments + "</Arguments>" : "") +
                     "<WorkingDirectory>" + workingDirectory + "</WorkingDirectory></Exec></Actions></Task>";
                 File.WriteAllText(xmlPath, xml, Encoding.Unicode);
                 string output;
@@ -838,8 +980,15 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 XmlDocument document = new XmlDocument();
                 document.LoadXml(output);
                 XmlNodeList commands = document.GetElementsByTagName("Command");
-                return commands.Count == 1 && String.Equals(Path.GetFullPath(commands[0].InnerText),
-                    Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase);
+                if (commands.Count != 1 || !String.Equals(Path.GetFullPath(commands[0].InnerText),
+                    Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) return false;
+                if (key != SimConnectKey) return true;
+                XmlNodeList arguments = document.GetElementsByTagName("Arguments");
+                XmlNodeList runLevels = document.GetElementsByTagName("RunLevel");
+                XmlNodeList users = document.GetElementsByTagName("UserId");
+                return arguments.Count == 1 && arguments[0].InnerText == SimConnectStopArguments &&
+                    runLevels.Count == 1 && runLevels[0].InnerText == "HighestAvailable" &&
+                    users.Count == 1 && users[0].InnerText == WindowsIdentity.GetCurrent().User.Value;
             }
             catch { return false; }
         }
@@ -870,7 +1019,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
         private static string TaskName(string key)
         {
-            return String.Equals(key, ConspitKey, StringComparison.OrdinalIgnoreCase) ? ConspitTaskName : "";
+            if (String.Equals(key, ConspitKey, StringComparison.OrdinalIgnoreCase)) return ConspitTaskName;
+            if (String.Equals(key, SimConnectKey, StringComparison.OrdinalIgnoreCase)) return SimConnectStopTaskName;
+            return "";
         }
 
         private static int RunSchtasks(string arguments, out string output)
