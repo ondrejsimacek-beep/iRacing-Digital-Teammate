@@ -185,6 +185,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             {
                 AppSetting setting = FindSetting(definition.Key);
                 AppCard card = new AppCard(definition, setting, previewMode);
+                card.LaunchRequested += delegate(object sender, EventArgs e)
+                {
+                    AppCard clicked = (AppCard)sender;
+                    StartApps(new List<AppDefinition> { clicked.Definition });
+                };
                 card.ToggleChanged += delegate { store.Save(settings); UpdateStackStatus(); };
                 card.ExternalStopChanged += delegate(object sender, EventArgs e)
                 {
@@ -719,41 +724,52 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
         private void StartStack()
         {
+            StartApps(definitions.Where(delegate(AppDefinition definition)
+            {
+                return FindSetting(definition.Key).Enabled;
+            }).ToList());
+        }
+
+        private void StartApps(List<AppDefinition> selected)
+        {
             if (operationRunning) return;
             operationRunning = true;
             SetButtonsEnabled(false);
             Thread worker = new Thread(delegate()
             {
-                List<AppDefinition> selected = definitions.Where(delegate(AppDefinition definition)
-                {
-                    return FindSetting(definition.Key).Enabled;
-                }).ToList();
-
                 int launched = 0;
+                string startError = "";
                 foreach (AppDefinition definition in selected)
                 {
                     AppSetting setting = FindSetting(definition.Key);
                     if (String.IsNullOrWhiteSpace(setting.Path) || !File.Exists(setting.Path))
                     {
+                        startError = "Select its executable with BROWSE first.";
                         Ui(delegate { SetActivity("Skipped " + definition.Name + " — select its executable first.", Livery.Error); });
                         continue;
                     }
                     Ui(delegate { SetActivity("Starting " + definition.Name + "…", Livery.GoldBright); });
+                    bool wasRunning = processes.IsRunning(definition);
                     string error;
                     if (processes.Launch(definition, setting.Path, out error))
                     {
-                        launched++;
+                        if (!wasRunning) launched++;
                         Ui(delegate { cards[definition.Key].RefreshView(true, processes.IsManaged(definition)); });
-                        if (setting.DelaySeconds > 0) Thread.Sleep(setting.DelaySeconds * 1000);
+                        if (!wasRunning && setting.DelaySeconds > 0) Thread.Sleep(setting.DelaySeconds * 1000);
                     }
                     else
                     {
+                        startError = error;
                         Ui(delegate { SetActivity("Could not start " + definition.Name + ": " + error, Livery.Error); });
                     }
                 }
                 Ui(delegate
                 {
-                    SetActivity("Race stack ready — " + launched + " application" + (launched == 1 ? "" : "s") + " started.", Livery.Success);
+                    bool singleRunning = selected.Count == 1 && processes.IsRunning(selected[0]);
+                    SetActivity(selected.Count == 1 ?
+                        selected[0].Name + (singleRunning ? " is running." : " could not be started: " + startError) :
+                        "Race stack ready — " + launched + " application" + (launched == 1 ? "" : "s") + " started.",
+                        selected.Count == 1 && !singleRunning ? Livery.Error : Livery.Success);
                     operationRunning = false;
                     SetButtonsEnabled(true);
                     RefreshStatuses();
@@ -1001,6 +1017,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         {
             startButton.Enabled = enabled;
             stopButton.Enabled = enabled;
+            foreach (AppCard card in cards.Values) card.SetLaunchEnabled(enabled);
         }
 
         private void SetActivity(string text, Color color)
@@ -1151,6 +1168,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public readonly AppSetting Setting;
         private readonly CheckBox enabledCheck;
         private readonly CheckBox externalStopCheck;
+        private readonly LiveryButton launchButton;
         private readonly Label pathLabel;
         private readonly Label stateLabel;
         private readonly Label dotLabel;
@@ -1159,6 +1177,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private readonly bool previewMode;
 
         public event EventHandler ToggleChanged;
+        public event EventHandler LaunchRequested;
         public event EventHandler ExternalStopChanged;
         public event EventHandler BrowseRequested;
         public event EventHandler HideRequested;
@@ -1180,19 +1199,14 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             accent.Width = 3;
             Controls.Add(accent);
 
-            Panel badge = new Panel();
-            badge.Location = new Point(18, 18);
-            badge.Size = new Size(52, 52);
-            badge.BackColor = Livery.Carbon;
-            Controls.Add(badge);
-
-            Label initials = new Label();
-            initials.Text = definition.Initials;
-            initials.ForeColor = Livery.GoldBright;
-            initials.Font = new Font("Segoe UI Semibold", definition.Initials.Length > 2 ? 9F : 12F, FontStyle.Bold);
-            initials.TextAlign = ContentAlignment.MiddleCenter;
-            initials.Dock = DockStyle.Fill;
-            badge.Controls.Add(initials);
+            launchButton = new LiveryButton(definition.Initials, Livery.Carbon, Livery.GoldBright, 52);
+            launchButton.Location = new Point(18, 18);
+            launchButton.Height = 52;
+            launchButton.Font = new Font("Segoe UI Semibold", definition.Initials.Length > 2 ? 9F : 12F, FontStyle.Bold);
+            launchButton.AccessibleName = "Start " + definition.Name;
+            launchButton.Click += delegate { if (LaunchRequested != null) LaunchRequested(this, EventArgs.Empty); };
+            new ToolTip().SetToolTip(launchButton, "Start " + definition.Name);
+            Controls.Add(launchButton);
 
             Label name = new Label();
             name.Text = definition.Name;
@@ -1295,6 +1309,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         public void SetExternalStop(bool enabled)
         {
             if (externalStopCheck != null) externalStopCheck.Checked = enabled;
+        }
+
+        public void SetLaunchEnabled(bool enabled)
+        {
+            launchButton.Enabled = enabled;
         }
 
         public void RefreshView(bool running, bool managed)

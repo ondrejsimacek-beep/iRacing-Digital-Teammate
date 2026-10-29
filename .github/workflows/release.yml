@@ -29,6 +29,10 @@ jobs:
         shell: powershell
         run: .\tests\run-process-lifecycle-smoke.ps1
 
+      - name: Test app icon launch
+        shell: powershell
+        run: .\tests\run-app-card-smoke.ps1
+
       - name: Install Inno Setup
         shell: powershell
         run: choco install innosetup --no-progress -y

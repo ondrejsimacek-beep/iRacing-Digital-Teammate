@@ -82,6 +82,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
             return new List<AppDefinition>
             {
+                ElevatedDef("conspit", "CONSPIT Launcher", "HARDWARE", "ConspitLink2.0", "CL", true,
+                    Path.Combine(pfx86, "Conspit Link 2.0", "ConspitLink2.0.exe"),
+                    Path.Combine(pf, "Conspit Link 2.0", "ConspitLink2.0.exe")),
+                Def("simconnectmanager", "SimConnect Manager", "HARDWARE", "SimConnectManager", "SC", true,
+                    Path.Combine(pf, "Simnet Racing", "SimConnectManager.exe"),
+                    Path.Combine(pfx86, "Simnet Racing", "SimConnectManager.exe")),
                 Def("iracing", "iRacing", "SIMULATOR", "iRacingUI", "iR", true,
                     Path.Combine(pfx86, "iRacing", "iRacingLauncher64.exe"),
                     Path.Combine(pfx86, "iRacing", "iRacingUI.exe"),
@@ -123,12 +129,6 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                     Path.Combine(local, "Programs", "racelabapps", "RacelabApps.exe")),
                 Def("streamdeck", "Elgato Stream Deck", "CONTROLS", "StreamDeck", "SD", false,
                     Path.Combine(pf, "Elgato", "StreamDeck", "StreamDeck.exe")),
-                ElevatedDef("conspit", "CONSPIT Launcher", "HARDWARE", "ConspitLink2.0", "CL", true,
-                    Path.Combine(pfx86, "Conspit Link 2.0", "ConspitLink2.0.exe"),
-                    Path.Combine(pf, "Conspit Link 2.0", "ConspitLink2.0.exe")),
-                Def("simconnectmanager", "SimConnect Manager", "HARDWARE", "SimConnectManager", "SC", true,
-                    Path.Combine(pf, "Simnet Racing", "SimConnectManager.exe"),
-                    Path.Combine(pfx86, "Simnet Racing", "SimConnectManager.exe")),
                 Def("mozapithouse", "MOZA Pit House", "HARDWARE", "MOZA Pit House", "MZ", false,
                     Path.Combine(pfx86, "MOZA Pit House", "MOZA Pit House.exe"),
                     Path.Combine(pf, "MOZA Pit House", "MOZA Pit House.exe")),
