@@ -23,6 +23,8 @@ came from this repository's Releases page before running it.
 - Subtle graphite Digital Downforce Sim Racing interface with embedded DDS logo and banner artwork.
 - Automatic detection of iRacing and common companion applications.
 - Sequential launch with an individual delay for every application.
+- Click an app's icon to start only that app, even when USE is off. Repeated clicks do not start another copy.
+- Stack launches start CONSPIT Launcher first, then SimConnect Manager for the pedals, followed by the other selected apps.
 - Live running-state indicators and configurable executable paths.
 - Running cards show whether Teammate manages the process or it was started externally.
 - Safe **Stop launched** action limited to process trees started by Teammate.

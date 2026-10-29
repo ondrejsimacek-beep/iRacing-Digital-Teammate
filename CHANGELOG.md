@@ -4,6 +4,17 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.6.0] - 2026-10-29
+
+### Added
+
+- Click an app's icon to start that app immediately, without changing its USE setting for Auto Mode.
+
+### Changed
+
+- Start CONSPIT Launcher first and SimConnect Manager second in both manual and automatic stacks.
+- Skip the launch delay for apps that are already running during a manual stack start.
+
 ## [2.5.2] - 2026-10-20
 
 ### Added
