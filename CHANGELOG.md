@@ -4,6 +4,15 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.6.1] - 2026-11-01
+
+### Fixed
+
+- Recover a missing DDS Telemetry Coach executable path while Teammate is running,
+  and save the detected path without requiring Rescan or a launcher restart.
+- Recheck missing executable paths before manual and Auto Mode launches, so apps
+  installed after Teammate started are no longer skipped using stale settings.
+
 ## [2.6.0] - 2026-10-29
 
 ### Added

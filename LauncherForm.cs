@@ -733,6 +733,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private void StartApps(List<AppDefinition> selected)
         {
             if (operationRunning) return;
+            RefreshLaunchPaths(selected);
             operationRunning = true;
             SetButtonsEnabled(false);
             Thread worker = new Thread(delegate()
@@ -806,8 +807,17 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             worker.Start();
         }
 
+        private void RefreshLaunchPaths(IEnumerable<AppDefinition> apps)
+        {
+            bool changed = false;
+            foreach (AppDefinition definition in apps)
+                changed = AppCatalog.RefreshMissingPath(definition, FindSetting(definition.Key)) || changed;
+            if (changed) store.Save(settings);
+        }
+
         private void RefreshStatuses()
         {
+            RefreshLaunchPaths(definitions.Where(delegate(AppDefinition app) { return app.Key == "ddscoach"; }));
             foreach (AppDefinition definition in definitions)
                 cards[definition.Key].RefreshView(processes.IsRunning(definition), processes.IsManaged(definition));
             UpdateStackStatus();
@@ -839,6 +849,11 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private void StartAutoStack()
         {
             if (operationRunning) return;
+            List<AppDefinition> selected = definitions.Where(delegate(AppDefinition definition)
+            {
+                return definition.Key != "iracing" && FindSetting(definition.Key).Enabled;
+            }).ToList();
+            RefreshLaunchPaths(selected);
             externalCleanupForSession.Clear();
             journal.Begin();
             journal.Record("iRacing session detected; Auto Mode is starting selected apps.");
@@ -849,10 +864,6 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             Thread worker = new Thread(delegate()
             {
                 int launched = 0;
-                List<AppDefinition> selected = definitions.Where(delegate(AppDefinition definition)
-                {
-                    return definition.Key != "iracing" && FindSetting(definition.Key).Enabled;
-                }).ToList();
                 foreach (AppDefinition definition in selected)
                     if (FindSetting(definition.Key).StopExternalAfterSession)
                         externalCleanupForSession.Add(definition.Key);

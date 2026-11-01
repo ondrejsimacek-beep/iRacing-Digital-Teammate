@@ -62,6 +62,8 @@ DDS Telemetry Coach is detected in its standard per-user installation folder;
 running portable copies are also detected. Other portable copies can be selected
 with **Browse**. Coach remains a separate app and
 uses the same launch and process-ownership rules as the other companions.
+If Coach is installed after Teammate is already running, its missing path is
+detected and saved automatically. Existing valid custom paths are preserved.
 
 CONSPIT Link 2.0 requires administrator rights. On its first Teammate-managed start,
 Windows asks once for permission to create a restricted Task Scheduler bridge. Later

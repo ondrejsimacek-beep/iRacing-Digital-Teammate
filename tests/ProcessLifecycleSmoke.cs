@@ -17,6 +17,21 @@ internal static class ProcessLifecycleSmoke
         if (File.Exists(coachPath) && AppCatalog.DetectPath(coach) != coachPath)
             throw new Exception("Installed DDS Coach was not detected.");
         string executable = Path.GetFullPath(args[0]);
+        AppDefinition pathProbe = new AppDefinition
+        {
+            Key = "ddscoach", ProcessName = "MissingCoachPathProbe",
+            CandidatePaths = new string[] { executable }
+        };
+        AppSetting stale = new AppSetting { Path = "", Enabled = false, Hidden = true };
+        if (!AppCatalog.RefreshMissingPath(pathProbe, stale) || stale.Path != executable)
+            throw new Exception("An empty in-memory Coach path was not recovered after installation.");
+        stale.Path = Path.Combine(Path.GetDirectoryName(executable), "old-coach.exe");
+        if (!AppCatalog.RefreshMissingPath(pathProbe, stale) || stale.Path != executable)
+            throw new Exception("A removed Coach path was not repaired.");
+        stale.Path = Path.GetFullPath(args[1]);
+        if (AppCatalog.RefreshMissingPath(pathProbe, stale) || stale.Path != Path.GetFullPath(args[1]))
+            throw new Exception("A valid custom Coach path was overwritten.");
+        if (stale.Enabled || !stale.Hidden) throw new Exception("Path repair changed app selection.");
         string signal = Path.Combine(Path.GetDirectoryName(executable), "restart.flag");
         if (File.Exists(signal)) File.Delete(signal);
         AppDefinition definition = new AppDefinition
