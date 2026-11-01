@@ -213,6 +213,15 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             return "";
         }
 
+        public static bool RefreshMissingPath(AppDefinition definition, AppSetting setting)
+        {
+            if (!String.IsNullOrWhiteSpace(setting.Path) && File.Exists(setting.Path)) return false;
+            string detected = DetectPath(definition);
+            if (String.IsNullOrWhiteSpace(detected)) return false;
+            setting.Path = detected;
+            return true;
+        }
+
         private static string DetectIRacing()
         {
             string install = FindInstalledLocation("iRacing.com Race Simulation");
