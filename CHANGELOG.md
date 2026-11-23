@@ -4,6 +4,17 @@ All notable changes to iRacing Digital Teammate are documented here.
 
 The project uses semantic versioning. GitHub release tags use the `vX.Y.Z` format.
 
+## [2.7.0] - 2026-11-23
+
+### Changed
+
+- Auto Mode still starts companions with the simulator, but now keeps them running
+  between simulator sessions until iRacing UI and the simulator have both closed.
+- Preserve managed processes and explicit external-cleanup choices across sessions
+  in the same client cycle. A new simulator session starts only missing selected apps.
+- Cancel pending cleanup if iRacing UI or the simulator reopens, or Auto Mode is disabled.
+- Do not lose a simulator-start event when another launcher operation is in progress.
+
 ## [2.6.1] - 2026-11-01
 
 ### Fixed

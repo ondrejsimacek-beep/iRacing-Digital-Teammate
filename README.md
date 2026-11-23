@@ -33,10 +33,11 @@ came from this repository's Releases page before running it.
 - Notification-area operation: Windows startup, the minimize button, and the window
   close button keep Teammate available beside the clock without occupying the taskbar.
 - **Auto Mode** starts selected companion apps when an iRacing simulator session
-  begins and stops only Teammate-launched apps after the session ends.
+  begins, keeps them running between sessions, and stops Teammate-launched apps
+  only after iRacing UI and the simulator have both closed.
 - irDashies and SimConnect Manager offer an optional **Close external** switch. When
-  enabled, Auto Mode also closes all running instances of that selected app after
-  a session, including copies started before the session or restarted by an updater.
+  enabled, Auto Mode also closes all running instances of that selected app when
+  iRacing UI and the simulator close, including copies started before the session or restarted by an updater.
   The switch defaults off. SimConnect Manager may need one-time Windows approval
   to create a restricted elevated cleanup task; no administrator rights are needed
   for normal Teammate use afterward.
@@ -82,8 +83,12 @@ accepts only `ConspitLink2.0.exe` installed under Program Files.
 With **Auto Mode** enabled, Teammate waits in the background for `iRacingSim*` while
 it is running. Enable **Start with Windows** separately if Teammate should be available
 automatically after sign-in. Starting the iRacing UI alone does not trigger companion
-apps; they start when the simulator session process appears. A three-second confirmation
-window prevents a brief process transition from triggering premature cleanup.
+apps; they start when the simulator session process appears. Ending a simulator
+session leaves companions running while iRacing UI is open. The next session reuses
+running companions and starts any missing selected apps. Cleanup begins only once
+both iRacing UI and the simulator are closed, after a three-second confirmation.
+Reopening either during confirmation cancels cleanup. Closing Teammate itself is
+not the trigger for companion cleanup.
 
 Closing Teammate itself does not close racing software.
 Crew Chief restarts marked by its updater remain managed when Teammate launched the original process.
