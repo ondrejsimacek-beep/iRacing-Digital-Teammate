@@ -34,6 +34,7 @@ internal static class ProcessLifecycleSmoke
         if (stale.Enabled || !stale.Hidden) throw new Exception("Path repair changed app selection.");
         string signal = Path.Combine(Path.GetDirectoryName(executable), "restart.flag");
         if (File.Exists(signal)) File.Delete(signal);
+        ClientLifecycleSmoke.Run(args[1]);
         AppDefinition definition = new AppDefinition
         {
             Key = "crewchief",

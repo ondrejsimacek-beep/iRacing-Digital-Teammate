@@ -11,7 +11,8 @@
 ## Core behavior and safety
 
 - Auto Mode starts enabled companion apps only when an actual `iRacingSim*` session process appears, not when only the iRacing UI opens.
-- After a confirmed session end, stop only processes that Teammate started for that session by default. irDashies and SimConnect Manager may close pre-existing instances only when the user explicitly enables CLOSE EXTERNAL for that app; this option must default off.
+- Keep companions running between simulator sessions while iRacing UI is open. Run automatic cleanup only after both iRacing UI and the simulator have closed, with a confirmation delay that is cancelled if either returns.
+- On client cleanup, stop only processes that Teammate started by default. irDashies and SimConnect Manager may close pre-existing instances only when the user explicitly enables CLOSE EXTERNAL for that app; this option must default off. Preserve process ownership and opt-in cleanup scope across simulator sessions in the same client cycle.
 - Preserve support for launchers that hand execution to replacement or child processes, especially Electron/Squirrel apps such as irDashies.
 - Use exact process-name queries. Do not reintroduce broad process enumeration or antivirus exclusions.
 - Use the current user's standard Startup folder shortcut for Start with Windows. Do not restore registry Run-key persistence.

@@ -394,7 +394,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 try
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-                    File.WriteAllText(filePath, "iRacing Digital Teammate - last Auto Mode session" +
+                    File.WriteAllText(filePath, "iRacing Digital Teammate - last Auto Mode client cycle" +
                         Environment.NewLine + "Started: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") +
                         Environment.NewLine + Environment.NewLine);
                     writeError = null;
@@ -437,6 +437,38 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         }
     }
 
+    public enum AutoModeAction { None, StartStack, KeepRunning, StopStack }
+
+    public sealed class AutoModeLifecycle
+    {
+        private bool sessionWasRunning;
+        public bool StackActive { get; private set; }
+
+        public AutoModeAction Poll(bool enabled, bool sessionRunning, bool clientRunning, bool busy)
+        {
+            if (!enabled) { sessionWasRunning = false; return AutoModeAction.None; }
+            if (busy) return AutoModeAction.None;
+            bool previousSession = sessionWasRunning;
+            sessionWasRunning = sessionRunning;
+            if (sessionRunning && !previousSession)
+            {
+                StackActive = true;
+                return AutoModeAction.StartStack;
+            }
+            if (StackActive && CanCleanup(sessionRunning, clientRunning)) return AutoModeAction.StopStack;
+            if (StackActive && previousSession && !sessionRunning) return AutoModeAction.KeepRunning;
+            return AutoModeAction.None;
+        }
+
+        public static bool CanCleanup(bool sessionRunning, bool clientRunning)
+        {
+            return !sessionRunning && !clientRunning;
+        }
+
+        public void ResetSessionDetection() { sessionWasRunning = false; }
+        public void CompleteStop() { StackActive = false; sessionWasRunning = false; }
+    }
+
     public class ProcessController
     {
         private readonly Dictionary<string, List<Process>> tracked = new Dictionary<string, List<Process>>();
@@ -465,6 +497,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 catch { }
             }
             return false;
+        }
+
+        public static bool IsIRacingClientRunning()
+        {
+            try { return IsProcessNameRunning("iRacingUI"); }
+            catch { return false; }
         }
 
         public bool IsRunning(AppDefinition definition)

@@ -54,7 +54,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private volatile bool operationRunning;
         private volatile bool autoTransitionRunning;
         private bool showHidden;
-        private bool sessionWasRunning;
+        private readonly AutoModeLifecycle autoLifecycle = new AutoModeLifecycle();
         private readonly bool previewMode;
         private readonly bool startMinimized;
         private NotifyIcon trayIcon;
@@ -349,7 +349,7 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             status.Controls.Add(separator);
 
             Label statusHint = new Label();
-            statusHint.Text = "Only session-started apps stop automatically, unless CLOSE EXTERNAL is enabled.";
+            statusHint.Text = "Apps start with the simulator and stay running until iRacing UI closes.";
             statusHint.ForeColor = Livery.Muted;
             statusHint.Font = new Font("Segoe UI", 7.6F);
             statusHint.Location = new Point(14, 164);
@@ -457,13 +457,13 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             store.Save(settings);
             if (settings.AutoModeEnabled)
             {
-                sessionWasRunning = false;
+                autoLifecycle.ResetSessionDetection();
                 SetActivity("Auto Mode enabled — waiting for an iRacing session.", Livery.Success);
             }
             else
             {
-                if (sessionWasRunning)
-                    journal.Record("Auto Mode disabled during the session; automatic cleanup will not run.");
+                if (autoLifecycle.StackActive)
+                    journal.Record("Auto Mode disabled; automatic cleanup on client close will not run.");
                 SetActivity("Auto Mode disabled. Running applications were left untouched.", Livery.Muted);
             }
             RefreshAutoModeButton();
@@ -827,26 +827,23 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         private void HandleAutoMode()
         {
             if (previewMode) return;
-            bool sessionRunning = ProcessController.IsIRacingSessionRunning();
-            if (!settings.AutoModeEnabled)
+            bool firstSession = !autoLifecycle.StackActive;
+            AutoModeAction action = autoLifecycle.Poll(settings.AutoModeEnabled,
+                ProcessController.IsIRacingSessionRunning(), ProcessController.IsIRacingClientRunning(),
+                operationRunning || autoTransitionRunning);
+            if (action == AutoModeAction.StartStack)
             {
-                sessionWasRunning = sessionRunning;
-                return;
+                StartAutoStack(firstSession);
             }
-
-            if (sessionRunning && !sessionWasRunning)
+            else if (action == AutoModeAction.KeepRunning)
             {
-                sessionWasRunning = true;
-                StartAutoStack();
+                journal.Record("Simulator session ended; companion apps are kept running until iRacing UI closes.");
+                SetActivity("Simulator closed — keeping apps running until iRacing UI closes.", Livery.Success);
             }
-            else if (!sessionRunning && sessionWasRunning)
-            {
-                sessionWasRunning = false;
-                ScheduleAutoStop();
-            }
+            else if (action == AutoModeAction.StopStack) ScheduleAutoStop();
         }
 
-        private void StartAutoStack()
+        private void StartAutoStack(bool firstSession)
         {
             if (operationRunning) return;
             List<AppDefinition> selected = definitions.Where(delegate(AppDefinition definition)
@@ -854,9 +851,13 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 return definition.Key != "iracing" && FindSetting(definition.Key).Enabled;
             }).ToList();
             RefreshLaunchPaths(selected);
-            externalCleanupForSession.Clear();
-            journal.Begin();
-            journal.Record("iRacing session detected; Auto Mode is starting selected apps.");
+            if (firstSession)
+            {
+                externalCleanupForSession.Clear();
+                journal.Begin();
+            }
+            journal.Record(firstSession ? "iRacing session detected; Auto Mode is starting selected apps." :
+                "Next simulator session detected; existing apps are retained and missing apps are started.");
             operationRunning = true;
             SetButtonsEnabled(false);
             SetActivity("iRacing session detected — starting companion applications…", Livery.GoldBright);
@@ -925,15 +926,15 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
         {
             if (autoTransitionRunning) return;
             autoTransitionRunning = true;
-            journal.Record("iRacing session ended; waiting 3 seconds to confirm shutdown.");
-            SetActivity("iRacing session ended — confirming shutdown…", Livery.GoldBright);
+            journal.Record("iRacing UI and simulator closed; waiting 3 seconds to confirm shutdown.");
+            SetActivity("iRacing client closed — confirming shutdown…", Livery.GoldBright);
 
             Thread worker = new Thread(delegate()
             {
                 Thread.Sleep(3000);
-                if (ProcessController.IsIRacingSessionRunning())
+                if (!CanAutoCleanup())
                 {
-                    journal.Record("Shutdown cancelled: iRacing session resumed.");
+                    journal.Record("Shutdown cancelled: Auto Mode was disabled or iRacing is running again.");
                     autoTransitionRunning = false;
                     return;
                 }
@@ -941,9 +942,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 while (operationRunning)
                 {
                     Thread.Sleep(200);
-                    if (ProcessController.IsIRacingSessionRunning())
+                    if (!CanAutoCleanup())
                     {
-                        journal.Record("Shutdown cancelled: iRacing session resumed.");
+                        journal.Record("Shutdown cancelled: Auto Mode was disabled or iRacing is running again.");
                         autoTransitionRunning = false;
                         return;
                     }
@@ -951,8 +952,15 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
 
                 operationRunning = true;
                 int stopped = 0;
+                bool cleanupComplete = true;
                 for (int i = definitions.Count - 1; i >= 0; i--)
                 {
+                    if (!CanAutoCleanup())
+                    {
+                        cleanupComplete = false;
+                        journal.Record("Cleanup interrupted: Auto Mode was disabled or iRacing reopened.");
+                        break;
+                    }
                     AppDefinition definition = definitions[i];
                     if (definition.Key == "iracing") continue;
                     bool selected = FindSetting(definition.Key).Enabled;
@@ -986,10 +994,13 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                         journal.Record(definition.Name + " was already closed.");
                 }
 
-                journal.Record("Session cleanup complete: " + stopped + " companion app(s) stopped.");
+                journal.Record((cleanupComplete ? "Client cleanup complete: " : "Client cleanup interrupted: ") +
+                    stopped + " companion app(s) stopped.");
                 Ui(delegate
                 {
-                    SetActivity("Session cleanup complete — " + stopped + " companion application" +
+                    if (cleanupComplete) autoLifecycle.CompleteStop();
+                    SetActivity((cleanupComplete ? "Client cleanup complete — " : "Client cleanup interrupted — ") +
+                        stopped + " companion application" +
                         (stopped == 1 ? "" : "s") + " stopped.", Livery.Success);
                     operationRunning = false;
                     autoTransitionRunning = false;
@@ -999,6 +1010,12 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             });
             worker.IsBackground = true;
             worker.Start();
+        }
+
+        private bool CanAutoCleanup()
+        {
+            return settings.AutoModeEnabled && AutoModeLifecycle.CanCleanup(
+                ProcessController.IsIRacingSessionRunning(), ProcessController.IsIRacingClientRunning());
         }
 
         private void UpdateStackStatus()
@@ -1114,8 +1131,8 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
             };
             FormClosed += delegate
             {
-                if (sessionWasRunning && settings.AutoModeEnabled)
-                    journal.Record("Teammate exited during the session; automatic cleanup will not run.");
+                if (autoLifecycle.StackActive && settings.AutoModeEnabled)
+                    journal.Record("Teammate exited before client cleanup; automatic cleanup will not run.");
                 automaticUpdateTimer.Stop();
                 automaticUpdateTimer.Dispose();
                 if (trayIcon != null)
@@ -1276,9 +1293,9 @@ namespace DigitalDownforceSimRacing.IRacingTeammate
                 externalStopCheck.Size = new Size(150, 20);
                 externalStopCheck.Location = new Point(Width - 166, 42);
                 externalStopCheck.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-                externalStopCheck.AccessibleDescription = "Also close this app after the iRacing session when it was already running before the session. Closes every matching instance.";
+                externalStopCheck.AccessibleDescription = "Also close this app when iRacing UI and the simulator close, even if it was already running before the first session. Closes every matching instance.";
                 new ToolTip().SetToolTip(externalStopCheck,
-                    "After a session, close all instances of this app, including ones started outside Teammate.");
+                    "When iRacing UI and the simulator close, close all instances, including ones started outside Teammate.");
                 externalStopCheck.CheckedChanged += delegate
                 {
                     Setting.StopExternalAfterSession = externalStopCheck.Checked;

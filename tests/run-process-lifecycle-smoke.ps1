@@ -20,7 +20,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Fake handoff launcher build failed.' }
 & $compiler /nologo /target:exe ('/out:' + $smoke) `
     /reference:System.dll /reference:System.Core.dll /reference:System.Management.dll `
     /reference:System.Web.Extensions.dll /reference:System.Xml.dll `
-    (Join-Path $root 'LauncherCore.cs') (Join-Path $PSScriptRoot 'ProcessLifecycleSmoke.cs')
+    (Join-Path $root 'LauncherCore.cs') (Join-Path $PSScriptRoot 'ProcessLifecycleSmoke.cs') `
+    (Join-Path $PSScriptRoot 'ClientLifecycleSmoke.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Process lifecycle smoke build failed.' }
 & $smoke $fake $external $handoff
 if ($LASTEXITCODE -ne 0) { throw 'Process lifecycle smoke failed.' }
